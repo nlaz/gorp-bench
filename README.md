@@ -14,6 +14,7 @@ harness/
   common/     shim.py (the PATH wrapper every arm runs behind), gorp_repo.py
   swexplore/  SWE-Explore-Bench — the flagship, 848 instances, line-level gold
   locbench/   Loc-Bench V1 — 560 instances, function-level gold
+  labbench/   Harvey LAB — legal tasks, LLM-judge rubric; the first non-code harness
 bench/        perf vs grep/ripgrep/ugrep/ack
 tests/        the scorers, which decide every published number
 ```
@@ -27,6 +28,28 @@ in arXiv 2606.07297 — the task prompt and the answer parser are theirs, and
 **`harness/locbench/`** is ours, for a different benchmark, and it carries
 machinery both use: `shim.py`, `harvest.py`, and the campaign-gate pattern
 `triage.py`.
+
+**`harness/labbench/`** wraps [Harvey's LAB](https://github.com/harveyai/harvey-labs)
+(Legal Agent Benchmark) the same way swexplore wraps its upstream: a blobless
+sparse clone at a pinned SHA, one copied file + one patch, arms additive.
+It is the first harness whose corpus is documents, not a git checkout, and
+it tests gorp on prose. The documents are converted to markdown in place
+(`build_corpus.py`, corpus label `md-v1`) using upstream's own judge-side
+extractor — the operator does not carry the ~3 GB of binary originals — so
+search results cite the very files the agent reads, upstream's grep becomes
+a functional baseline, and **numbers are not comparable to Harvey's
+published leaderboard** (different input modality; arm-vs-arm contrasts are
+unaffected). Three arms: `lab-base` (upstream verbatim), `lab-rg` (+ one
+structured ripgrep tool), `lab-gorp` (+ the same tool shape backed by gorp);
+the primary contrast is gorp − rg. Needs `uv`, `pandoc`, `podman`, and an
+`ANTHROPIC_API_KEY` in the vendored checkout's `.env`.
+
+```sh
+bash harness/labbench/fetch.sh                    # vendor + venv + corpus
+python3 harness/labbench/lab_frame.py --check     # the registered 150-task frame
+python3 harness/labbench/preflight_lab.py         # the money gate, no API calls
+RUNG=12 harness/labbench/campaign.sh              # a rung; triage_lab gates it
+```
 
 ## The sibling-checkout convention
 

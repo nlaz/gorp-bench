@@ -37,6 +37,22 @@ exists because something went wrong that no unit test could see.
   everything else blocked, including `git` — history after `base_commit`
   contains the real fix). `run.py` is the driver, `harvest.py` mines shim logs
   into guess corpora, `guessplay.py` replays them against real gold.
+- `harness/labbench/` — Harvey LAB (harveyai/harvey-labs), the first
+  **non-code** harness: legal documents, LLM-judge rubric, all-pass endpoint.
+  Vendors upstream *code only* at a pinned SHA (blobless sparse clone; the
+  3 GB of task documents never land on disk). Delta = `patches/lab_arms.py`
+  copied in + one git patch; arms are additive `ToolExecutor` subclasses
+  selected by env `LABBENCH_ARM` (`lab-base` is upstream byte-for-byte).
+  The corpus is `md-v1`: `build_corpus.py` converts each frame task's
+  documents to markdown in place with upstream's judge-side extractor and
+  drops the originals — a frozen label like an arm name, and the reason LAB
+  numbers never compare to Harvey's leaderboard. Search hits cite the same
+  `.md` files the agent reads (`<original>.md`, suffix appended always);
+  `task.json` is never mirrored or searchable — the anti-cheat boundary is
+  structural. Gates: `preflight_lab.py` before spend, `triage_lab.py`
+  between rungs (an adaptation of locbench's `triage.py`, not a fork).
+  Scoring is upstream's judge — no scorer of ours exists; our tests cover
+  the naming round-trip, the frame, the gates, and the descriptions.
 - `harness/common/publish_traces.py` — **the one artifact that crosses into
   gorp.** Harvested searches + benchmark gold -> a tiered trace set
   (`blind`/`guess`/`golden`), written to `../gorp/eval/queries/traces-*.jsonl`

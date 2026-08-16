@@ -1,0 +1,54 @@
+diff --git a/harness/run.py b/harness/run.py
+index f306576e5..c134bc9a7 100644
+--- a/harness/run.py
++++ b/harness/run.py
+@@ -320,14 +320,14 @@ def main(args):
+         reasoning_effort=args.reasoning_effort,
+     )
+ 
+-    tool_executor = ToolExecutor(
++    # gorp-bench arms: lab-base returns upstream's executor and tool list
++    # verbatim; treatment arms add exactly one tool (LABBENCH_ARM).
++    import lab_arms
++    tool_executor, tools = lab_arms.build(
+         sandbox=sandbox,
+         shell_timeout=args.shell_timeout,
+     )
+ 
+-    # Load tool definitions
+-    tools = get_all_tool_definitions()
+-
+     # Build the system prompt: preamble (workspace + tools + conventions)
+     # + skill manuals. Capabilities only — no task content. The per-task
+     # instructions go in the first user message so the model treats them as
+@@ -337,6 +337,7 @@ def main(args):
+         skills_text = load_skills(skill_names)
+         system_prompt += skills_text
+         setup_skill_scripts(skill_names, workspace_dir)
++    system_prompt = lab_arms.amend_system_prompt(system_prompt)
+     user_prompt = task["instructions"]
+ 
+     # Run the agent
+@@ -363,6 +364,9 @@ def main(args):
+ 
+     # Save metrics
+     metrics = {
++        # tool_metrics first: get_metrics() hardcodes finished_cleanly=True,
++        # so spread last it overwrote the agent loop's real value.
++        **result["tool_metrics"],
+         "model": args.model,
+         "task": args.task,
+         "run_id": args.run_id,
+@@ -372,10 +376,11 @@ def main(args):
+         "total_tokens": result["input_tokens"] + result["output_tokens"],
+         "wall_clock_seconds": result["wall_clock_seconds"],
+         "finished_cleanly": result["finished_cleanly"],
++        "context_overflow": result["context_overflow"],
+         "completed_at": datetime.now(timezone.utc).isoformat(),
+-        **result["tool_metrics"],
+     }
+     (results_dir / "metrics.json").write_text(json.dumps(metrics, indent=2))
++    lab_arms.write_telemetry(results_dir, tool_executor)
+ 
+     # Print summary
+     print()
