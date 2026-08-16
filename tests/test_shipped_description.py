@@ -23,8 +23,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "eval" / "locbench"))
 
-# The arm README ships. One name, so a future desc-v11 needs one edit here.
-SHIPPED = "desc-v10"
+# The arm README ships. One name, so a future desc arm needs one edit here.
+SHIPPED = "desc-v12"
 
 HEADING = "### The tool description to give your agent"
 # Present in the scored arm because the harness blocks every other tool; not

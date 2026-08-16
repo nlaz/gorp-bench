@@ -2,7 +2,7 @@
 """Does the tool actually work on the input agents give it? (RESEARCH.md §16.11)
 
 The §16.10 campaign spent $361 and 1,115 agent runs with 47% of the treatment
-arm's searches silently returning nothing, because `semgrep "query" <file>`
+arm's searches silently returning nothing, because `gorp "query" <file>`
 was broken and nothing tested a file-as-root scope. Two adversarial reviews
 missed it: they checked the experiment and the harness, not the tool's
 behavior on real agent input.
@@ -19,7 +19,7 @@ Checks, each a hard failure:
   1. every real invocation SHAPE returns hits (dir / subdir / file scopes,
      ranked and exact, with and without -k)
   2. hits carry a non-empty path (the §16.11 sibling bug printed `:9:text`)
-  3. no self-teaching footer leaks under SEMGREP_NO_HINTS (an A/B whose
+  3. no self-teaching footer leaks under GORP_NO_HINTS (an A/B whose
      treatment arm withholds `-e` must not have the tool advertising it)
   4. grep muscle memory parses (§17): `-n` was 88% of the flags in the
      measured agent corpus and every one of those calls exited 2, as did the
@@ -39,7 +39,7 @@ from pathlib import Path
 
 HERE = Path(__file__).parent
 ROOT = HERE.parent.parent
-SEMGREP = Path(os.environ.get("SEMGREP_BIN", ROOT / "target/release/semgrep"))
+GORP = Path(os.environ.get("GORP_BIN", ROOT / "target/release/gorp"))
 FIXTURE = ROOT / "tests/corpus"
 GUESSES = HERE.parent / "queries" / "guesses-v0.jsonl"
 SRC = re.compile(r"\.(py|rs|js|ts|go|java|rb|c|h|cpp|md|txt|json|ya?ml|toml|sh)$")
@@ -58,9 +58,9 @@ def ok(check, detail=""):
 
 def run(args, env_extra=None):
     env = dict(os.environ)
-    env["SEMGREP_NO_HINTS"] = "1"
+    env["GORP_NO_HINTS"] = "1"
     env.update(env_extra or {})
-    p = subprocess.run([str(SEMGREP), *args], capture_output=True, text=True,
+    p = subprocess.run([str(GORP), *args], capture_output=True, text=True,
                        timeout=120, env=env)
     hits = []
     for line in p.stdout.splitlines():
@@ -158,7 +158,7 @@ def check_real_guess_replay(corpus, n=25):
 def check_no_coaching(corpus):
     """Two separate contracts, both shipped as of RESEARCH.md §16.10.
 
-    (a) SEMGREP_NO_HINTS silences the footer entirely — the harness knob.
+    (a) GORP_NO_HINTS silences the footer entirely — the harness knob.
     (b) Ranked footers never name `-e` *even unsuppressed* — the product
         posture. Suppression alone was not enough: an arm whose description
         withholds `-e` is coached anyway the moment someone runs the binary
@@ -169,17 +169,17 @@ def check_no_coaching(corpus):
                 str(corpus)])
     if p.stderr.strip():
         fail("footer suppression",
-             f"stderr not silent under SEMGREP_NO_HINTS: {p.stderr.strip()[:90]!r}")
+             f"stderr not silent under GORP_NO_HINTS: {p.stderr.strip()[:90]!r}")
     else:
         ok("footer suppression", "stderr silent")
 
     # Unsuppressed: the footer must exist (so the check above isn't vacuous)
     # and must still not advertise exact mode.
     env = dict(os.environ)
-    env.pop("SEMGREP_NO_HINTS", None)
-    q = subprocess.run([str(SEMGREP), "-k", "3", "retry backoff", str(corpus)],
+    env.pop("GORP_NO_HINTS", None)
+    q = subprocess.run([str(GORP), "-k", "3", "retry backoff", str(corpus)],
                        capture_output=True, text=True, timeout=120, env=env)
-    if "semgrep:" not in q.stderr:
+    if "gorp:" not in q.stderr:
         fail("footer suppression control",
              "no footer even WITHOUT the env var — the check above proves nothing")
     else:
@@ -198,7 +198,7 @@ def check_grep_compat(corpus):
 
     Measured on the rg arm's 2,074 real invocations: `-n` appeared 1,829 times
     (88%), `-A`/`-B` 142, `-g`/`--include` 273, `-l` 118, `-r`/`-R` 48, and 31%
-    of calls passed two or more paths. Every one of those exited 2. semgrep's
+    of calls passed two or more paths. Every one of those exited 2. gorp's
     `path:line:text` output *is* grep's `-rn` form, so accepting the no-ops
     costs nothing and refusing them cost a whole class of dead calls.
 
@@ -256,7 +256,7 @@ def check_grep_compat(corpus):
         (probe / "bundle.min.js").write_text("var retryBackoff=" + "x" * 50_000 + ";\n")
         (probe / "real.py").write_text("def retry_backoff(attempt):\n    return attempt\n")
         p, _ = run(["retry backoff", str(probe), "-k", "5"],
-                   {"SEMGREP_CACHE_DIR": str(probe / ".cache")})
+                   {"GORP_CACHE_DIR": str(probe / ".cache")})
         widest = max((len(l) for l in p.stdout.splitlines()), default=0)
         if widest > 400:
             fail("line cap", f"a {widest}-char line reached stdout")
@@ -333,9 +333,9 @@ def main():
     ap.add_argument("--skip-shims", action="store_true")
     args = ap.parse_args()
 
-    if not SEMGREP.exists():
-        raise SystemExit(f"build first: cargo build --release (missing {SEMGREP})")
-    print(f"preflight against {args.corpus} using {SEMGREP}")
+    if not GORP.exists():
+        raise SystemExit(f"build first: cargo build --release (missing {GORP})")
+    print(f"preflight against {args.corpus} using {GORP}")
 
     check_invocation_shapes(args.corpus, args.query)
     check_real_guess_replay(args.corpus)

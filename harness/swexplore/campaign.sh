@@ -37,7 +37,7 @@ ROOT=$(cd ../.. && pwd)
 
 command -v uv >/dev/null || { echo "uv not on PATH"; exit 4; }
 [ -s "$DATA/bench-ladder.jsonl" ] || { echo "no bench-ladder.jsonl — run ladder_frame.py"; exit 4; }
-[ -x "$ROOT/target/release/sg" ] || { echo "no release sg binary — cargo build --release"; exit 4; }
+[ -x "$ROOT/target/release/gorp" ] || { echo "no release sg binary — cargo build --release"; exit 4; }
 
 # The frame must reproduce from its seed before a rung spends anything on it;
 # an order that drifted silently would break the prefix property that makes
@@ -98,7 +98,7 @@ for pass_i in $(seq 1 "$PASSES"); do
     SWEXPLORE_RUN_ID="$RUN_ID" \
     SWEXPLORE_PROV="$PROV" \
     SWEXPLORE_CACHE_GB="$CACHE_GB" \
-    SEMGREP_BIN="$ROOT/target/release/sg" \
+    GORP_BIN="$ROOT/target/release/gorp" \
     uv run --with typer --with rich python eval_runner.py \
       --bench ../bench-ladder.jsonl --repos ../repos --issue-map ../issue_map.json \
       "${EXPL[@]}" -k 5 --limit "$RUNG" --workers "$WORKERS" --resume \

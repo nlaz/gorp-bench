@@ -33,7 +33,7 @@ import tempfile
 HERE = pathlib.Path(__file__).parent
 DATA = HERE.parent / "data" / "swexplore"
 SG = pathlib.Path(
-    os.environ.get("SEMGREP_BIN", HERE.parent.parent / "target" / "release" / "sg")
+    os.environ.get("GORP_BIN", HERE.parent.parent / "target" / "release" / "gorp")
 )
 EXTS = (".py", ".js", ".rb", ".c", ".h", ".go", ".java", ".ts", ".tsx", ".rs", ".php")
 
@@ -89,8 +89,8 @@ def top5_files(query, scope, cwd, cache):
     try:
         p = subprocess.run(
             cmd, capture_output=True, text=True, timeout=600, cwd=cwd,
-            env={"SEMGREP_CACHE_DIR": cache, "PATH": "/usr/bin:/bin",
-                 "SEMGREP_NO_HINTS": "1"},
+            env={"GORP_CACHE_DIR": cache, "PATH": "/usr/bin:/bin",
+                 "GORP_NO_HINTS": "1"},
         )
     except Exception:  # noqa: BLE001
         return None

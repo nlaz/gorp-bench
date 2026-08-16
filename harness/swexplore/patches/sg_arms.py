@@ -26,7 +26,7 @@ What this adds on top of their explorer, and nothing else:
   * `locbench/shim.py` on PATH, unchanged — it derives the real binary from
     `argv[1]`, so `sg` needs no edit there. Buys per-invocation argv, exit,
     stdout bytes and wall ms, which is what the sg-invocation tripwire reads.
-  * `SEMGREP_CACHE_DIR` per arm and `SEMGREP_TRACE_FILE` per cond dir.
+  * `GORP_CACHE_DIR` per arm and `GORP_TRACE_FILE` per cond dir.
 """
 from __future__ import annotations
 
@@ -172,7 +172,7 @@ ARM_TOOL = {"cc-rg": "rg", "cc-sg": "sg", "sub-rg": "rg", "sub-sg": "sg", "sub-s
 # unfinished cells must not silently acquire a new engine.
 #
 # The chunking half must ALSO reach the index build, and that is the trap this
-# pair of constants exists to avoid. A repo-local `.semgrep/` is exempt from
+# pair of constants exists to avoid. A repo-local `.gorp/` is exempt from
 # cache-tag matching by design (cache::discover — "the user built it
 # deliberately"), so an index built with line windows will happily answer a
 # function-chunked search: set only the search half and every DIRECTORY scope
@@ -240,7 +240,7 @@ HERE = Path(__file__).resolve().parent
 # eval/data/swexplore/upstream/explorers -> repo root
 REPO_ROOT = HERE.parents[4]
 LOCBENCH = REPO_ROOT / "eval" / "locbench"
-SEMGREP_BIN = Path(os.environ.get("SEMGREP_BIN", REPO_ROOT / "target/release/sg"))
+GORP_BIN = Path(os.environ.get("GORP_BIN", REPO_ROOT / "target/release/gorp"))
 RG_BIN = os.environ.get("RG_BIN", "/opt/homebrew/bin/rg")
 
 # Provenance level. `full` is for the ladder rungs, where the point is to be
@@ -253,7 +253,7 @@ RG_BIN = os.environ.get("RG_BIN", "/opt/homebrew/bin/rg")
 # identical and lean rungs pool with full ones. What it must NOT touch:
 #   * the shim itself and its block messages — that is the mechanism that
 #     keeps shell `grep` away from the arms, not logging;
-#   * `SEMGREP_NO_HINTS` — §16.10 measured that footer moving an agent's
+#   * `GORP_NO_HINTS` — §16.10 measured that footer moving an agent's
 #     ranked share from 7% to 98%, so it is a treatment;
 #   * `--stats` / `--stats-json` — those write to stderr, which shim.py
 #     replays to the agent, so they are agent-visible by construction and are
@@ -265,7 +265,7 @@ def _index_matches(meta_path: Path, flags: list[str]) -> bool:
     """Does this built index actually carry the chunking the arm asked for?
 
     Only `--chunking` is checked, because it is the one index-side flag §30
-    sets and the only one whose absence is invisible: a repo-local `.semgrep`
+    sets and the only one whose absence is invisible: a repo-local `.gorp`
     is exempt from cache-tag matching, so a window-chunked index answers a
     function-chunked search with no error anywhere.
     """
@@ -291,9 +291,9 @@ def _binary_sha() -> str | None:
     """sha256 of the sg binary, computed once. 39 MB × 2,544 runs is 4 minutes
     of hashing for a constant, so it is cached rather than recomputed."""
     global _BIN_SHA
-    if _BIN_SHA is None and SEMGREP_BIN.exists():
+    if _BIN_SHA is None and GORP_BIN.exists():
         h = hashlib.sha256()
-        with SEMGREP_BIN.open("rb") as f:
+        with GORP_BIN.open("rb") as f:
             for chunk in iter(lambda: f.read(1 << 20), b""):
                 h.update(chunk)
         _BIN_SHA = h.hexdigest()
@@ -380,10 +380,10 @@ class ArmExplorer(ClaudeCodeExplorer):
             # runs/<run>/semgrep-cache/<arm>/, which sits in the same namespace
             # as the instance directories — so anything globbing
             # runs/<run>/*/ picks up a cache dir as if it were an instance.
-            "SEMGREP_CACHE_DIR": str(self.run_dir.parent.parent / "cache"
+            "GORP_CACHE_DIR": str(self.run_dir.parent.parent / "cache"
                                      / self.run_dir.name / self.arm),
-            "SEMGREP_NO_HINTS": "1",
-            "SEMGREP_TRACE_FILE": str(cond_dir / "trace.jsonl"),
+            "GORP_NO_HINTS": "1",
+            "GORP_TRACE_FILE": str(cond_dir / "trace.jsonl"),
             "LOCBENCH_STDOUT_DUMP": "on" if PROV == "full" else "off",
         })
         # Only this arm's own tool gets a real binding; the other falls into
@@ -396,7 +396,7 @@ class ArmExplorer(ClaudeCodeExplorer):
         if tool == "rg":
             env["LOCBENCH_REAL_RG"] = RG_BIN
         elif tool == "sg":
-            env["LOCBENCH_REAL_SG"] = str(SEMGREP_BIN)
+            env["LOCBENCH_REAL_SG"] = str(GORP_BIN)
             flags = SG_SEARCH_FLAGS
             if self.arm == "sub-sgb":
                 extra = os.environ.get("SWEXPLORE_SGB_EXTRA", "--bridge-expand 8")
@@ -422,16 +422,16 @@ class ArmExplorer(ClaudeCodeExplorer):
         return env, path
 
     def _ensure_index(self) -> dict:
-        """Build .semgrep in the checkout. Only the sg arm gets one."""
+        """Build .gorp in the checkout. Only the sg arm gets one."""
         if ARM_TOOL.get(self.arm) != "sg":
             return {"built": False, "reason": "arm has no sg"}
-        idx = Path(self.repo_root) / ".semgrep" / "meta.json"
+        idx = Path(self.repo_root) / ".gorp" / "meta.json"
         flags = shlex.split(SG_INDEX_FLAGS)
-        if idx.exists() and idx.stat().st_mtime >= SEMGREP_BIN.stat().st_mtime \
+        if idx.exists() and idx.stat().st_mtime >= GORP_BIN.stat().st_mtime \
                 and _index_matches(idx, flags):
             return {"built": False, "reason": "reused"}
         t0 = time.time()
-        p = subprocess.run([str(SEMGREP_BIN), "index", str(self.repo_root), *flags],
+        p = subprocess.run([str(GORP_BIN), "index", str(self.repo_root), *flags],
                            capture_output=True, timeout=3600)
         out = {"built": p.returncode == 0, "index_s": round(time.time() - t0, 2),
                "returncode": p.returncode, "index_flags": SG_INDEX_FLAGS,

@@ -32,7 +32,7 @@ from pathlib import Path
 from typing import List
 
 from .base import ContextRegion, ExplorerResult
-from .sg_arms import SEMGREP_BIN
+from .sg_arms import GORP_BIN
 
 # The issue statement is used as the query verbatim, matching what upstream
 # does for BM25 and TF-IDF ("use the issue statement as the query"). It is a
@@ -49,10 +49,10 @@ class SgStaticExplorer:
     timeout: int = 300
 
     def _index(self) -> None:
-        idx = Path(self.repo_root) / ".semgrep" / "meta.json"
-        if idx.exists() and idx.stat().st_mtime >= SEMGREP_BIN.stat().st_mtime:
+        idx = Path(self.repo_root) / ".gorp" / "meta.json"
+        if idx.exists() and idx.stat().st_mtime >= GORP_BIN.stat().st_mtime:
             return
-        subprocess.run([str(SEMGREP_BIN), "index", str(self.repo_root)],
+        subprocess.run([str(GORP_BIN), "index", str(self.repo_root)],
                        capture_output=True, timeout=self.timeout)
 
     def explore(self, *, instance_id: str, query: str, top_k: int = 5
@@ -62,10 +62,10 @@ class SgStaticExplorer:
         # cwd is the repo root so `path` comes back repo-relative, which is
         # the frame SWE-Explore's gold is expressed in.
         p = subprocess.run(
-            [str(SEMGREP_BIN), q, ".", "--json", "-k", str(top_k)],
+            [str(GORP_BIN), q, ".", "--json", "-k", str(top_k)],
             cwd=str(self.repo_root), capture_output=True, text=True,
             timeout=self.timeout,
-            env={**os.environ, "SEMGREP_NO_HINTS": "1"},
+            env={**os.environ, "GORP_NO_HINTS": "1"},
         )
         regions: list[ContextRegion] = []
         for line in p.stdout.splitlines():

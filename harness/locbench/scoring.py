@@ -175,7 +175,7 @@ def first_gold_hit_seq(shim_log_path, stdout_dir, gold_files):
     The tail match (`dir/base` anywhere in the text) tolerates the absolute
     prefixes rg prints. It cannot see semgrep's output at all when the agent
     scopes below the repo root: **semgrep prints paths relative to the scope it
-    was given, and rg prints them as passed.** `semgrep q msal/` yields
+    was given, and rg prints them as passed.** `gorp q msal/` yields
     `application.py:162:…` where `rg q msal/` yields `msal/application.py:162:…`,
     so a two-component tail matches ripgrep and misses semgrep — a systematic
     undercount of one arm only. On the §19.7 campaign it hid a gold hit in 13 of

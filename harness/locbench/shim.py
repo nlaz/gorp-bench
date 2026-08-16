@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Logging shim for search tools in Loc-Bench agent runs.
 
-Invoked by the generated `rg`/`semgrep` wrappers on the agent's PATH:
+Invoked by the generated `rg`/`gorp` wrappers on the agent's PATH:
 
     shim.py <tool> [args...]
 

@@ -50,7 +50,7 @@ SOURCES = {
                   "revision": "unknown (fetched from 'latest' before pinning)"},
 }
 
-SKIP_DIRS = {".git", ".semgrep", "__pycache__"}
+SKIP_DIRS = {".git", ".gorp", "__pycache__"}
 
 
 def tree_digest(root):

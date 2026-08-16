@@ -6,7 +6,7 @@ measurements rather than preference:
 **Rolling checkouts.** Upstream assumes `--repos` is fully prefetched. Measured
 over 19 instances spanning all ten languages, a checkout averages 32.1 MB
 (1.2 MB axum → 113 MB teleport), so 848 of them is **26.6 GB** — against 21 GiB
-free on this machine, before semgrep indexes, which live inside the checkout
+free on this machine, before gorp indexes, which live inside the checkout
 and roughly double it. So checkouts are fetched on demand and evicted under a
 byte cap.
 
@@ -201,7 +201,7 @@ def ensure(instance_id: str, repos_root: Path, data_dir: Path) -> Path | None:
         _bootstrap_locked(repos_root)
         if dest.is_dir():
             _lru[instance_id] = time.monotonic()
-            # Re-measure rather than setdefault: `.semgrep/` is built *after*
+            # Re-measure rather than setdefault: `.gorp/` is built *after*
             # the checkout is fetched and is 25-35% of the tree (2.1 GB of 8.3
             # GB measured live), so the fetch-time figure understates every
             # instance and the cap binds well above where it was set.

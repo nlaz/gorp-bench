@@ -33,7 +33,7 @@ def main():
     for r in latest.values():
         by_corpus[r["corpus"]].append(r)
 
-    md = ["# semgrep benchmark report", ""]
+    md = ["# gorp benchmark report", ""]
     for corpus, rows in by_corpus.items():
         md += [f"## {corpus}", ""]
 
@@ -51,7 +51,7 @@ def main():
         for section, pred in [
             ("Keyword (all tools)", lambda r: r["mode"] == "keyword"),
             ("NL-as-keywords fallback (grep family)", lambda r: r["mode"] == "nl-fallback"),
-            ("Ranked modes (semgrep)", lambda r: r["mode"] in ("bm25", "semantic", "hybrid")),
+            ("Ranked modes (gorp)", lambda r: r["mode"] in ("bm25", "semantic", "hybrid")),
         ]:
             sec = [r for r in rows if pred(r)]
             if not sec:

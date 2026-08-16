@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
-"""Loc-Bench localization ablation: rg vs semgrep vs both as the agent's
-search tool, with full performance provenance per run.
+"""Loc-Bench localization ablation: rg vs the ranked engine vs both as the
+agent's search tool, with full performance provenance per run.
+
+The condition names below (`semgrep`, `sg`, `search`, and the desc-vN arms)
+are **frozen experiment labels, not the tool's current name.** The engine is
+`gorp` since 2026-08; the arms keep the name they were measured under,
+because a campaign compares against recorded runs and an arm whose text
+changed is a different arm (RESEARCH.md §19.9 — desc-v9 renamed the tool and
+added a clause, and could attribute neither). New arms get new names:
+desc-v12 is desc-v10 with the tool renamed and nothing else touched.
 
 Usage:
   python3 eval/locbench/run.py --limit 2 --conditions rg,semgrep --model haiku --keep-worktrees
@@ -33,7 +41,7 @@ import scoring
 
 HERE = Path(__file__).parent
 DATA = HERE.parent / "data" / "locbench"
-SEMGREP = Path(os.environ.get("SEMGREP_BIN", HERE.parent.parent / "target/release/semgrep"))
+GORP = Path(os.environ.get("GORP_BIN", HERE.parent.parent / "target/release/gorp"))
 RG = os.environ.get("RG_BIN", "/opt/homebrew/bin/rg")
 CLAUDE = os.environ.get("CLAUDE_BIN", "claude")
 
@@ -251,6 +259,25 @@ DESC_CONDITIONS = {
         "exhaustive — if the answer isn't there, rephrase. Read and Glob are "
         "also available."
     ),
+    # desc-v12 (§36): desc-v10 with one variable changed — the tool's name,
+    # after the semgrep→gorp rename. Nothing else moves: same clauses, same
+    # example, same word order. v10 stays frozen because every campaign
+    # through §35 was measured against it, and §19.9's lesson is that desc-v9
+    # changed the name *and* a clause and could therefore attribute neither.
+    # This is the arm README ships, so the shipped description stays a
+    # measured one.
+    "desc-v12": (
+        "The only code search tool available is `gorp`, a ranked code search "
+        "you run with Bash. Give it anything — an identifier, a phrase, or a "
+        "question: `gorp \"query\"` searches the whole repository and returns "
+        "the most relevant locations as path:line:text (top 5; `-k N` for "
+        "more). Start wide: add a path argument only to narrow further after "
+        "a wide search has pointed somewhere. Example: gorp "
+        "\"retry_backoff backoff_delay compute_delay\" → "
+        "src/net/retry.rs:142:fn backoff_delay(attempt: u32). Ranked, not "
+        "exhaustive — if the answer isn't there, rephrase. Read and Glob are "
+        "also available."
+    ),
     # desc-v11 (§30.3): v10 plus the exact-match escape hatch, ROUTED. The §30
     # pilot measured sg-arm agents reaching for shell grep 1.2×/session — the
     # single largest cost in the campaign — and the blocked argvs split into
@@ -296,12 +323,15 @@ DISPLAY_CONDITIONS = ("disp-line", "disp-full", "disp-head",
                       "pl-1", "pl-18", "pl-full", "pl-18k5",
                       "disp-unit", "disp-nounit")
 
-ARM_TOOL = {"desc-v9": "sg", **{n: "sg" for n in DISPLAY_CONDITIONS}}
+ARM_TOOL = {"desc-v9": "sg", "desc-v12": "gorp",
+            **{n: "sg" for n in DISPLAY_CONDITIONS}}
 
 # Every search-tool name the shims cover. `sg` is here so its shim exists for
 # every arm, not only desc-v9 — an arm that mentions a name with no shim behind
 # it would reach the real binary on PATH and escape the harness entirely.
-SHIMMED_SEARCH_TOOLS = ("rg", "semgrep", "search", "sg")
+# `semgrep` and `sg` outlived the binaries they named: the recorded arms still
+# type them, and a replay of those runs must still resolve a shim.
+SHIMMED_SEARCH_TOOLS = ("rg", "semgrep", "search", "sg", "gorp")
 
 for _name, _line in DESC_CONDITIONS.items():
     TOOL_LINES[_name] = _line + UNAVAILABLE
@@ -358,6 +388,7 @@ ALLOWED = {
     "rg": ["Bash(rg *)"],
     "semgrep": ["Bash(semgrep *)"],
     "search": ["Bash(search *)"],
+    "gorp": ["Bash(gorp *)"],
     "both": ["Bash(rg *)", "Bash(semgrep *)"],
     **{name: [f"Bash({ARM_TOOL.get(name, 'semgrep')} *)"] for name in SG_ENGINE_CONDITIONS},
     **{name: ["Bash(semgrep *)"] for name in CAPTURE_CONDITIONS},
@@ -484,7 +515,7 @@ def ensure_index(tree, meta_path, sif=False, embed_preproc="none"):
     want = {"sif": sif, "embed_preproc": embed_preproc}
     if idx_meta.exists():
         have = json.loads(idx_meta.read_text())
-        fresh = idx_meta.stat().st_mtime >= SEMGREP.stat().st_mtime
+        fresh = idx_meta.stat().st_mtime >= GORP.stat().st_mtime
         got = {"sif": have.get("sif", False),
                "embed_preproc": have.get("embed_preproc", "none")}
         if got == want and fresh:
@@ -492,7 +523,7 @@ def ensure_index(tree, meta_path, sif=False, embed_preproc="none"):
                     "build_wall_s": meta.get("index_build_s"),
                     "index_mb": meta.get("index_mb")}
     t0 = time.perf_counter()
-    cmd = [str(SEMGREP), "index", str(tree)]
+    cmd = [str(GORP), "index", str(tree)]
     if sif:
         cmd += ["--sif", "--sif-a", "0.0001"]
     if embed_preproc != "none":
@@ -644,11 +675,11 @@ def run_agent(instance, condition, tree, run_dir, args):
         "LOCBENCH_STDOUT_DIR": str(searches),
         # semgrep's write-through cache: isolate per run dir so eval runs
         # never populate (or read) the user's real ~/.cache/semgrep.
-        "SEMGREP_CACHE_DIR": str(run_dir / "semgrep-cache"),
+        "GORP_CACHE_DIR": str(run_dir / "semgrep-cache"),
         # No self-teaching footers in an A/B: they advertise `-e` after
         # every ranked search, which would be an uncontrolled co-treatment
         # in exactly the arm whose description withholds it (§16.9 A1).
-        "SEMGREP_NO_HINTS": "1",
+        "GORP_NO_HINTS": "1",
         # Per-invocation forensics. The §16.10 campaign captured only
         # (argv, exit, stdout_bytes) per search, which is why a bug that
         # silently emptied 47% of the treatment arm was found by reading
@@ -659,7 +690,7 @@ def run_agent(instance, condition, tree, run_dir, args):
         # search an exact-miss suggestion runs. One line per invocation, with
         # mode, index/cache resolution, files_walked, chunks considered,
         # repair outcome, stage timings and exit code. Read by triage.py.
-        "SEMGREP_TRACE_FILE": str(cond_dir / "trace.jsonl"),
+        "GORP_TRACE_FILE": str(cond_dir / "trace.jsonl"),
         **block_msgs(condition),
     }
     # Inherited LOCBENCH_* from the parent shell would silently hand an arm a
@@ -675,7 +706,7 @@ def run_agent(instance, condition, tree, run_dir, args):
         env["LOCBENCH_REAL_RG"] = RG
     tool = tool_of(condition)
     if tool != "rg":
-        env[f"LOCBENCH_REAL_{tool.upper()}"] = str(SEMGREP)
+        env[f"LOCBENCH_REAL_{tool.upper()}"] = str(GORP)
     flags = SG_ENGINE_CONDITIONS.get(condition, "")
     if flags:
         env[f"LOCBENCH_{tool.upper()}_FLAGS"] = flags
@@ -696,8 +727,8 @@ def run_agent(instance, condition, tree, run_dir, args):
         "model": args.model, "tool_line": tool_line_text,
         "tool_line_sha256": hashlib.sha256(tool_line_text.encode()).hexdigest()[:16],
         "allowed_tools": ALLOWED[condition], "budget_usd": args.budget_usd,
-        "semgrep_sha256": _sha(SEMGREP),
-        "semgrep_mtime": SEMGREP.stat().st_mtime if SEMGREP.exists() else None,
+        "semgrep_sha256": _sha(GORP),
+        "semgrep_mtime": GORP.stat().st_mtime if GORP.exists() else None,
         "claude_version": CLAUDE_VERSION,
         "settings_sha256": _sha(Path.home() / ".claude" / "settings.json"),
         "dataset_sha256": _sha(args.dataset),
@@ -974,8 +1005,8 @@ def main():
     ap.add_argument("--out", type=Path, default=DATA / "results.jsonl")
     args = ap.parse_args()
 
-    if not SEMGREP.exists():
-        sys.exit(f"build first: cargo build --release   (missing {SEMGREP})")
+    if not GORP.exists():
+        sys.exit(f"build first: cargo build --release   (missing {GORP})")
     if not Path(RG).exists():
         sys.exit(f"missing rg at {RG} (set RG_BIN)")
     if not args.dataset.exists():

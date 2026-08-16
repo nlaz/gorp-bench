@@ -39,7 +39,7 @@ HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent))
 import leakage  # noqa: E402  (identifier predicate, shared with run_eval)
-import run as locbench  # noqa: E402  (ensure_worktree, ensure_index, SEMGREP)
+import run as locbench  # noqa: E402  (ensure_worktree, ensure_index, GORP)
 
 DATA = HERE.parent / "data" / "locbench"
 
@@ -49,7 +49,7 @@ DATA = HERE.parent / "data" / "locbench"
 # ---------------------------------------------------------------------------
 
 def parse_argv(argv):
-    """Split a logged semgrep argv into (is_exact, query, scopes).
+    """Split a logged gorp argv into (is_exact, query, scopes).
 
     Flags that take a value are skipped with their value so a `-k 20` does not
     get mistaken for the query. The first bare token is the query; the rest
@@ -76,13 +76,13 @@ def parse_argv(argv):
     return is_exact, query, scopes
 
 
-DEFAULT_TOOLS = ("semgrep", "search", "sg")
+DEFAULT_TOOLS = ("gorp", "semgrep", "search", "sg")
 
 
 def harvest(runs_dir, want_exact, tools=DEFAULT_TOOLS):
     """Every non-blocked search, deduped, as dicts carrying their provenance.
 
-    `tools` defaults to the semgrep-shaped invocations and EXCLUDES `rg`.
+    `tools` defaults to the gorp-shaped invocations and EXCLUDES `rg`.
     That matters more than it looks. The shim logs hold 2,006 semgrep, 570 rg
     and 163 search calls, and the rg ones are regexes — `csrf|CSRF|X-CSRF|wtf`,
     `def persist`, `requests\\.`. Feeding a regex to a ranked engine measures
@@ -148,17 +148,17 @@ def rank_of_gold(hits, golds):
 
 
 def run_query(tree, query, flags, k, is_exact, cache_dir=None):
-    cmd = [str(locbench.SEMGREP), "--json", "-k", str(k)]
+    cmd = [str(locbench.GORP), "--json", "-k", str(k)]
     if is_exact:
         cmd += ["-e"]
     cmd += flags + [query, str(tree)]
     env = dict(os.environ)
     if cache_dir is not None:
         # CLAUDE.md: "tests and the eval harness isolate it". Without this the
-        # replay reads and writes the developer's own ~/.cache/semgrep, so
+        # replay reads and writes the developer's own ~/.cache/gorp, so
         # condition A can be answered from an entry condition B wrote — the
         # cross-contamination FIXES.md #10 was about, with the same shape.
-        env["SEMGREP_CACHE_DIR"] = str(cache_dir)
+        env["GORP_CACHE_DIR"] = str(cache_dir)
     try:
         p = subprocess.run(cmd, capture_output=True, text=True, timeout=120, env=env)
     except subprocess.TimeoutExpired:
@@ -217,7 +217,7 @@ def main():
                     help="write the harvested query distribution and exit "
                          "without replaying anything")
     ap.add_argument("--cache-dir", type=Path, default=None,
-                    help="SEMGREP_CACHE_DIR for the replay (default: a temp dir)")
+                    help="GORP_CACHE_DIR for the replay (default: a temp dir)")
     ap.add_argument("--out", type=Path, default=DATA / "replay.jsonl")
     args = ap.parse_args()
 
@@ -251,9 +251,9 @@ def main():
     tmp = None
     cache_dir = args.cache_dir
     if cache_dir is None:
-        tmp = tempfile.TemporaryDirectory(prefix="semgrep-replay-cache-")
+        tmp = tempfile.TemporaryDirectory(prefix="gorp-replay-cache-")
         cache_dir = Path(tmp.name)
-    print(f"SEMGREP_CACHE_DIR={cache_dir}")
+    print(f"GORP_CACHE_DIR={cache_dir}")
 
     rows, done, skipped = [], 0, 0
     try:

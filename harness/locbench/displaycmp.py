@@ -87,7 +87,7 @@ def is_search(name, cmd, tool):
     """A search by THIS arm's tool, not any tool.
 
     `tool` rather than a fixed list: an arm told to type `sg` that emits
-    `semgrep` is escaping its own treatment, and counting it here would hide
+    `gorp` is escaping its own treatment, and counting it here would hide
     that in the endpoint instead of surfacing it.
     """
     return name == "Bash" and cmd.strip().startswith(tool + " ")

@@ -35,7 +35,7 @@ import argparse, json, os, pathlib, re, shutil, subprocess, collections, time, t
 
 HERE = pathlib.Path(__file__).parent
 ROOT = HERE.parent.parent
-SG = ROOT / "target/release/sg"
+SG = ROOT / "target/release/gorp"
 DATA = ROOT / "eval/data/swexplore"
 K = 30
 
@@ -126,7 +126,7 @@ out_f = open(args.out, "w")
 t0 = time.time(); n = 0
 try:
     for repo, rrows in sorted(by_repo.items()):
-        env = dict(os.environ, SEMGREP_CACHE_DIR=str(cache))
+        env = dict(os.environ, GORP_CACHE_DIR=str(cache))
         def run(argv):
             p = subprocess.run([str(SG), *argv], cwd=repo, env=env,
                                capture_output=True, text=True, timeout=900)

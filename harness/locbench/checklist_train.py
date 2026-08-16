@@ -164,7 +164,7 @@ def main():
     print(f"# model - fine mrr lift: {lift:+.4f}  <- the §35.2 gate-1 number")
 
     final = LogisticRegression(C=args.c, max_iter=1000).fit(X, y)
-    print("\n// ---- paste into crates/semgrep-core/src/search/checklist.rs ----")
+    print("\n// ---- paste into crates/gorp-core/src/search/checklist.rs ----")
     print(f"// trained {Path(args.dump).name}, target={args.target}, "
           f"C={args.c}, {len(with_gold)} queries")
     print("pub(crate) const WEIGHTS: [f32; %d] = [" % len(FEATURES))

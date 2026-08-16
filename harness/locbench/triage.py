@@ -8,7 +8,7 @@ per-search record was `(argv, exit, stdout_bytes)` — enough to see that a sear
 returned no bytes, not enough to see *why*, and nobody was looking.
 
 This is the missing instrument. It reads the per-invocation trace envelopes
-(`SEMGREP_TRACE_FILE`, set by run.py since §18) alongside the shim logs, and
+(`GORP_TRACE_FILE`, set by run.py since §18) alongside the shim logs, and
 reports the failure modes this project has actually been bitten by. Every check
 below exists because something went wrong that no test could see.
 
@@ -112,7 +112,7 @@ def classify_usage(argv):
     toks = [a for a in argv if a]
     if not toks:
         return "empty argv"
-    # A trailing value-taking flag: `semgrep "q" tests -k` with no number.
+    # A trailing value-taking flag: `gorp "q" tests -k` with no number.
     if toks[-1] in VALUED_FLAGS:
         return "missing flag value (tool correct)"
     # A query that begins with a dash reads as flags. The caller's mistake, but
@@ -237,7 +237,7 @@ def check_tool(rows, examples):
     # §18 have no traces and are expected to trip this.
     if n_search and not traced:
         gate("engine traces present", 0, 1, worse="below",
-             detail="no SEMGREP_TRACE_FILE envelopes; the empty-result "
+             detail="no GORP_TRACE_FILE envelopes; the empty-result "
                     "diagnosis cannot be made and the share below is vacuous")
     if floored:
         print(f"  ---   {len(floored)} ranked search(es) refused by the score "

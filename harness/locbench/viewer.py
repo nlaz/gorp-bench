@@ -42,7 +42,7 @@ SECONDARY = "file_acc@5"
 ARMS = ("rg", "desc-v5")
 
 # What a sample lacks the instrumentation to answer, and the figure established
-# elsewhere. §16.10 predates SEMGREP_TRACE_FILE, so its empty-ranked rate is not
+# elsewhere. §16.10 predates GORP_TRACE_FILE, so its empty-ranked rate is not
 # 0 — it is unmeasured, and RESEARCH.md §17 recovered the real number offline by
 # classifying every logged invocation. Rendering "0/0" there showed the
 # project's worst result as a clean zero.
@@ -804,7 +804,7 @@ function markGold(text, gold) {
     out = out.replace(new RegExp(esc(g), 'g'), m => `<span class="goldmark">${m}</span>`);
   });
   // semgrep prints paths relative to the scope it was given, so a gold file
-  // reached as `semgrep q msal/` appears as `application.py:162:` and the full
+  // reached as `gorp q msal/` appears as `application.py:162:` and the full
   // path above never matches. Mark the bare basename too — but only where it
   // leads a result line, never mid-text, or every mention of a common filename
   // in someone's import statement lights up as the answer.

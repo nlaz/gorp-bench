@@ -6,7 +6,7 @@ ladder: `writeParquet\\|save_parquet\\|to_parquet`. Two separate things live
 in such a pattern and must not be conflated:
 
 - the agent's INTENT: alternation over candidate spellings (the rungs);
-- the ENGINE's semantics: ripgrep's regex engine (which `semgrep -e` and
+- the ENGINE's semantics: ripgrep's regex engine (which `gorp -e` and
   `rg` both use) treats `\\|` as a LITERAL pipe — a BRE-habit ladder is a
   dead search, matching a `|` character that occurs nowhere.
 

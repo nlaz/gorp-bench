@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Benchmark semgrep against grep/ripgrep/ugrep/ack on speed, memory, and CPU.
+"""Benchmark gorp against grep/ripgrep/ugrep/ack on speed, memory, and CPU.
 
 For every (corpus, tool, query) cell this runs the command N times via
 `/usr/bin/time -l` (macOS) and records wall time, user+sys CPU, and peak RSS
@@ -27,7 +27,7 @@ import time
 from pathlib import Path
 
 HERE = Path(__file__).parent
-SEMGREP = HERE.parent / "target/release/semgrep"
+GORP = HERE.parent / "target/release/gorp"
 
 # Keyword competitors, invoked by absolute path (dev shells wrap `grep`).
 # The greps get -E so all tools speak extended regex (BRE chokes on `+`).
@@ -117,7 +117,7 @@ def provenance():
     return {
         "git_sha": sh("git", "-C", str(HERE.parent), "rev-parse", "--short", "HEAD"),
         "git_dirty": bool(sh("git", "-C", str(HERE.parent), "status", "--porcelain")),
-        "binary_bytes": SEMGREP.stat().st_size if SEMGREP.exists() else None,
+        "binary_bytes": GORP.stat().st_size if GORP.exists() else None,
         "machine": f"{platform.system()}-{platform.machine()}",
         "cpu": sh("sysctl", "-n", "machdep.cpu.brand_string") or platform.processor(),
         "cores": os.cpu_count(),
@@ -143,8 +143,8 @@ def main():
     args = ap.parse_args()
     sections = set(args.sections.split(","))
 
-    if not SEMGREP.exists():
-        sys.exit(f"build first: cargo build --release   (missing {SEMGREP})")
+    if not GORP.exists():
+        sys.exit(f"build first: cargo build --release   (missing {GORP})")
 
     queries = json.loads((HERE / "queries.json").read_text())
     outdir = Path(args.out)
@@ -163,7 +163,7 @@ def main():
         # dims change and would have moved again with function chunking.
         if rec.get("corpus"):
             rec.setdefault("index_bytes",
-                           dir_bytes(HERE / "corpora" / rec["corpus"] / ".semgrep"))
+                           dir_bytes(HERE / "corpora" / rec["corpus"] / ".gorp"))
         results.append(rec)
         with open(results_path, "a") as f:
             f.write(json.dumps(rec) + "\n")
@@ -182,14 +182,14 @@ def main():
         qset = queries[corpus]
 
         # -- index build cost (once, measured) --------------------------------
-        semgrep_dir = corpus_dir / ".semgrep"
+        gorp_dir = corpus_dir / ".gorp"
         if "index" in sections and not args.skip_index_build:
-            if semgrep_dir.exists():
-                shutil.rmtree(semgrep_dir)
-            rec = {"corpus": corpus, "tool": "semgrep", "scenario": "index-build", "mode": "index"}
-            rec = bench_cell(rec, [str(SEMGREP), "index", str(corpus_dir)], runs=1, warmup=0)
+            if gorp_dir.exists():
+                shutil.rmtree(gorp_dir)
+            rec = {"corpus": corpus, "tool": "gorp", "scenario": "index-build", "mode": "index"}
+            rec = bench_cell(rec, [str(GORP), "index", str(corpus_dir)], runs=1, warmup=0)
             rec["index_mb"] = round(
-                sum(p.stat().st_size for p in semgrep_dir.rglob("*")) / 1e6, 1
+                sum(p.stat().st_size for p in gorp_dir.rglob("*")) / 1e6, 1
             )
             emit(rec)
 
@@ -204,25 +204,25 @@ def main():
                     {"corpus": corpus, "tool": tool, "mode": "keyword",
                      "scenario": f"kw:{q['name']}"},
                     cmd, args.runs))
-            cmd = [str(SEMGREP), "--mode", "keyword"] + flags + [q["pattern"], str(corpus_dir)]
+            cmd = [str(GORP), "--mode", "keyword"] + flags + [q["pattern"], str(corpus_dir)]
             emit(bench_cell(
-                {"corpus": corpus, "tool": "semgrep", "mode": "keyword",
+                {"corpus": corpus, "tool": "gorp", "mode": "keyword",
                  "scenario": f"kw:{q['name']}"},
                 cmd, args.runs))
 
-        # -- ranked queries: semgrep only, unindexed vs indexed -------------------
+        # -- ranked queries: gorp only, unindexed vs indexed -------------------
         for q in qset["nl"]:
             label = q["query"][:24]
             for mode in ["bm25", "semantic", "hybrid"] if "ranked" in sections else []:
                 emit(bench_cell(
-                    {"corpus": corpus, "tool": "semgrep", "mode": mode,
+                    {"corpus": corpus, "tool": "gorp", "mode": mode,
                      "scenario": f"cold:{label}"},
-                    [str(SEMGREP), "--mode", mode, "--no-index", q["query"], str(corpus_dir)],
+                    [str(GORP), "--mode", mode, "--no-index", q["query"], str(corpus_dir)],
                     max(1, args.runs // 2), warmup=0))  # cold runs are slow; fewer reps
                 emit(bench_cell(
-                    {"corpus": corpus, "tool": "semgrep", "mode": mode,
+                    {"corpus": corpus, "tool": "gorp", "mode": mode,
                      "scenario": f"warm:{label}"},
-                    [str(SEMGREP), "--mode", mode, q["query"], str(corpus_dir)],
+                    [str(GORP), "--mode", mode, q["query"], str(corpus_dir)],
                     args.runs))
             # grep-family NL fallback: agent-style keyword extraction
             for tool, base in TOOLS.items():

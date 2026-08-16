@@ -18,7 +18,7 @@ Repo roots come from each cell's trace envelope (root_canonical), so this
 needs no side files beyond the misswhy --json output. Checkouts are LRU'd by
 the campaign; whatever survives is a convenience sample and should be
 reported as one. Indexes are built into a throwaway cache and wiped per repo
-— mind SEMGREP_CACHE_DIR if you point this at a live one.
+— mind GORP_CACHE_DIR if you point this at a live one.
 """
 import argparse
 import collections
@@ -32,11 +32,11 @@ import tempfile
 
 HERE = pathlib.Path(__file__).parent
 DATA = HERE.parent / "data" / "swexplore"
-# SEMGREP_BIN lets a probe run against a binary built elsewhere while
+# GORP_BIN lets a probe run against a binary built elsewhere while
 # target/release is serving another eval - the bin identity is the caller's
 # responsibility to record either way.
-SG = pathlib.Path(os.environ.get("SEMGREP_BIN") or
-                  HERE.parent.parent / "target" / "release" / "sg")
+SG = pathlib.Path(os.environ.get("GORP_BIN") or
+                  HERE.parent.parent / "target" / "release" / "gorp")
 # Matches both hit-line forms: grep-style `path:41:text` (exact mode and
 # old captures) and the §34 unit-view header `path:41-58` (ranked mode
 # since the unit view shipped). group(1)/group(2) mean the same in both.
@@ -68,7 +68,7 @@ def main():
     ap.add_argument("--flags", default="--chunking function --min-score 0.42")
     ap.add_argument("--index-flags", default="--chunking function",
                     help="re-index each checkout with these flags before "
-                         "querying. Surviving checkouts carry .semgrep dirs "
+                         "querying. Surviving checkouts carry .gorp dirs "
                          "from whichever binary the campaign ran; a probe "
                          "binary with new index-side behavior (§35.3's "
                          "graph.bin) must rebuild or every query errors — "
@@ -95,7 +95,7 @@ def main():
     n = 0
     try:
         for repo, rrows in sorted(by_repo.items()):
-            env = dict(os.environ, SEMGREP_CACHE_DIR=str(cache))
+            env = dict(os.environ, GORP_CACHE_DIR=str(cache))
             if args.index_flags.strip():
                 subprocess.run([str(SG), "index", *args.index_flags.split()],
                                cwd=repo, env=env, capture_output=True,

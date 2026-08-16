@@ -100,18 +100,18 @@ def main():
         except Exception as e:  # noqa: BLE001
             print(f"  skip {inst_id}: {type(e).__name__}: {e}")
             continue
-        subprocess.run([str(locbench.SEMGREP), "index", str(tree)],
+        subprocess.run([str(locbench.GORP), "index", str(tree)],
                        check=True, capture_output=True, timeout=600)
         for r in todo:
             scope_rel = (r.get("scopes_rel") or ["."])[0] or "."
             path = tree if scope_rel in (None, ".") else tree / scope_rel
             if not Path(path).exists():
                 path, scope_rel = tree, "."
-            cmd = [str(locbench.SEMGREP), "--json", "-k", str(args.k),
+            cmd = [str(locbench.GORP), "--json", "-k", str(args.k),
                    r["pattern"], str(path)]
             try:
                 p = subprocess.run(cmd, capture_output=True, text=True, timeout=120,
-                                   env={"SEMGREP_CACHE_DIR": tmp.name,
+                                   env={"GORP_CACHE_DIR": tmp.name,
                                         "PATH": "/usr/bin:/bin"})
                 hits = [json.loads(l) for l in p.stdout.splitlines() if l.strip()]
             except Exception:  # noqa: BLE001

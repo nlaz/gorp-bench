@@ -5,7 +5,7 @@ For every guess-group in the corpus (one exact/rg invocation's ladder; a
 bare guess is a 1-rung ladder), replay three arms against the instance's
 gold files:
 
-  exact       the agent's actual pattern, verbatim, through `semgrep -e`
+  exact       the agent's actual pattern, verbatim, through `gorp -e`
   exact-norm  dead `\\|` ladders re-run with `|` — what the agent MEANT
   t1 / t2     the ranked translations, under --mode bm25|semantic|hybrid
 
@@ -79,7 +79,7 @@ CONFIGS = {
                    "search": ["--embed-preproc", "split"],
                    "partial": "sif is index-only; file scopes get split alone"},
     # §29.3: function-boundary chunking. Both halves, same reasoning as the
-    # rendering configs — a repo-local .semgrep serves whatever params built
+    # rendering configs — a repo-local .gorp serves whatever params built
     # it, so a search-only flag would leave every directory scope untreated
     # and report a diluted null; the search half is what treats file scopes,
     # which never resolve an index.
@@ -92,7 +92,7 @@ MODES = ("bm25", "semantic", "hybrid")
 # older binary compares two engines and calls it a config delta: the existing
 # guessplay.jsonl predates the §16.11 file-scope fix, and 208 of its 624
 # ranked rows are hardcoded zeros as a result.
-BIN_SHA = hashlib.sha256(locbench.SEMGREP.read_bytes()).hexdigest()[:16]
+BIN_SHA = hashlib.sha256(locbench.GORP.read_bytes()).hexdigest()[:16]
 
 
 def gid(row):
@@ -102,18 +102,18 @@ def gid(row):
 def run_semgrep(tree, scope_rel, query, k, is_exact, mode, cache_dir,
                 search_flags=(), dump_features=False):
     path = tree if scope_rel in (None, ".") else tree / scope_rel
-    cmd = [str(locbench.SEMGREP), "--json", "-k", str(k)]
+    cmd = [str(locbench.GORP), "--json", "-k", str(k)]
     if is_exact:
         cmd.append("-e")
     else:
         cmd += ["--mode", mode, *search_flags]
     cmd += [query, str(path)]
     env = dict(os.environ)
-    env["SEMGREP_CACHE_DIR"] = str(cache_dir)
+    env["GORP_CACHE_DIR"] = str(cache_dir)
     if dump_features:
         # The engine attaches a per-hit `features` object to its JSON
         # (RESEARCH.md §35.2) - the checklist training dump.
-        env["SEMGREP_DUMP_FEATURES"] = "1"
+        env["GORP_DUMP_FEATURES"] = "1"
     try:
         p = subprocess.run(cmd, capture_output=True, text=True, timeout=120, env=env)
     except subprocess.TimeoutExpired:
@@ -353,7 +353,7 @@ def main():
                          "passes here still needs a full-corpus confirmation")
     ap.add_argument("--dump-hits", type=Path, default=None,
                     help="write one JSONL row per ranked invocation carrying "
-                         "every hit's engine features (SEMGREP_DUMP_FEATURES=1) "
+                         "every hit's engine features (GORP_DUMP_FEATURES=1) "
                          "plus per-hit gold labels - the §35.2 checklist "
                          "training dump. Labels are computed here, while the "
                          "worktree still exists")
@@ -401,7 +401,7 @@ def main():
     if args.file_scopes_only:
         # A file-scoped search never reads an index (`cache::discover` bails on a
         # non-directory root, cache/mod.rs:74), so for these rows the per-config
-        # `semgrep index` below is pure cost. Dropping it is what turns an
+        # `gorp index` below is pure cost. Dropping it is what turns an
         # hours-long arm into a ~10-minute one, which is what makes the §24
         # factorial affordable. Only the primary policy is scoped here: `root`
         # rewrites every scope to ".", which is a directory by definition.
@@ -469,7 +469,7 @@ def main():
             # ranked arms must all see the same build within a config.
             flags = CONFIGS[config]["index"]
             if needs_index:
-                subprocess.run([str(locbench.SEMGREP), "index", str(tree), *flags],
+                subprocess.run([str(locbench.GORP), "index", str(tree), *flags],
                                check=True, capture_output=True, timeout=600)
                 # Readback: a failed or ignored build used to degrade silently
                 # into "measured the previous config", which is
@@ -477,7 +477,7 @@ def main():
                 # space the arm asked for. Only meaningful when one was built —
                 # skipping the assert with no index is correct; skipping it with
                 # one is how the failure it guards against gets back in.
-                got = json.loads((tree / ".semgrep" / "meta.json").read_text())
+                got = json.loads((tree / ".gorp" / "meta.json").read_text())
                 want_pp = "none"
                 if "--embed-preproc" in flags:
                     want_pp = flags[flags.index("--embed-preproc") + 1]

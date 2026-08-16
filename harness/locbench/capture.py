@@ -32,10 +32,10 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-# `semgrep` or `rg` in *command* position: at the start, or after a pipe,
+# `gorp` or `rg` in *command* position: at the start, or after a pipe,
 # semicolon, `&&`, or an env-var prefix. Deliberately not a substring test —
 # see the comment at its use site in `timeline_of`.
-INVOKES_SEARCH = re.compile(r"(?:^|[;&|]\s*|\b[A-Z_]+=\S+\s+)(semgrep|sg|rg)\s")
+INVOKES_SEARCH = re.compile(r"(?:^|[;&|]\s*|\b[A-Z_]+=\S+\s+)(gorp|semgrep|sg|rg)\s")
 
 HERE = Path(__file__).parent
 DATA = HERE.parent / "data" / "locbench"
@@ -381,15 +381,18 @@ def timeline_of(d, searches):
                 # A shell call that *invoked* the search tool gets the engine's
                 # own account of it, matched by order.
                 #
-                # The test has to be "is this program semgrep/rg", not "does the
-                # string appear": every worktree path in this campaign contains
-                # `/semgrep/`, so a substring check matched `head -100
-                # /…/semgrep/eval/…/test.py` and popped a real search off the
-                # queue for it. The result was engine facts — mode, files
+                # The test has to be "is this program the search tool", not
+                # "does the string appear": every worktree path in this
+                # campaign contains the repo's own name, so a substring check
+                # matched `head -100 /…/gorp/eval/…/test.py` and popped a real
+                # search off the queue for it. The alternation is anchored to
+                # program position — line start, after `;&|`, or after an env
+                # assignment — which is what makes a path segment of the same
+                # name harmless, and why the rename did not reopen this. The result was engine facts — mode, files
                 # walked, chunks, hits — displayed under a `head` command, and
                 # every search after it attributed to the wrong call.
                 # …and one shell call can invoke it more than once:
-                # `semgrep "a" x; echo ---; semgrep "b" y` is a single tool_use
+                # `gorp "a" x; echo ---; gorp "b" y` is a single tool_use
                 # and two logged searches. Popping one per call desynced the
                 # queue, so every later call in that run showed the previous
                 # search's engine facts — silently, and plausibly.

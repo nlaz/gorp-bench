@@ -27,9 +27,13 @@ sys.path.insert(0, str(HERE))
 
 DATA = HERE.parent / "data" / "locbench"
 
-SEARCH_TOOLS = ("semgrep", "search", "sg", "rg")
+# Every name the engine has shipped under, plus the arm-only aliases. The
+# old ones stay because the shim logs they appear in are recorded facts:
+# a run harvested in §16 typed `gorp`, and it typed it whatever the
+# binary is called today.
+SEARCH_TOOLS = ("gorp", "semgrep", "search", "sg", "rg")
 
-# semgrep CLI flags that take a value (superset of replay.py's list).
+# gorp CLI flags that take a value (superset of replay.py's list).
 SG_VALUED = {"-k", "-C", "--mode", "--sem-weight", "--mmr-lambda", "--window",
              "--overlap", "--prf", "--maxsim-pool", "--maxsim-blend", "-A", "-B",
              "--embed-preproc", "--sif-a", "--repair-max-drift"}
