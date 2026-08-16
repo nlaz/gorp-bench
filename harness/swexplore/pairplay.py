@@ -20,6 +20,7 @@ of the sequential union, and the verbatim pipe queries not worse than their
 pooled behaviour.
 """
 
+from pathlib import Path
 import argparse
 import collections
 import glob
@@ -29,12 +30,13 @@ import pathlib
 import subprocess
 import sys
 import tempfile
+# The engine under test is a sibling checkout; `common` resolves it.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "harness"))
+from common import gorp_repo as common  # noqa: E402
 
 HERE = pathlib.Path(__file__).parent
-DATA = HERE.parent / "data" / "swexplore"
-SG = pathlib.Path(
-    os.environ.get("GORP_BIN", HERE.parent.parent / "target" / "release" / "gorp")
-)
+DATA = common.DATA / "swexplore"
+SG = common.BIN
 EXTS = (".py", ".js", ".rb", ".c", ".h", ".go", ".java", ".ts", ".tsx", ".rs", ".php")
 
 

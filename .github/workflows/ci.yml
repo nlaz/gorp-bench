@@ -1,0 +1,78 @@
+name: ci
+
+# This repo measures an engine it does not contain. The layout it assumes is
+# the one developers already use — gorp, ese and anny as sibling checkouts —
+# reproduced here so CI fails the same way a workstation would.
+#
+# PREREQUISITE: `gorp` builds against sibling checkouts of the Bog stack
+# (`../ese`, `../anny`), which live in a different org. CI needs read access:
+# set the `BOG_TOKEN` secret to a PAT with `contents: read` on
+# flowercomputers/ese and flowercomputers/anny, or make them public and drop
+# the `token:` lines below.
+#
+# What is NOT tested here: a campaign. Campaigns cost real agent budget and
+# need API credentials, so CI proves the harness *loads and scores*, and
+# preflight proves the engine answers the shapes agents actually type. The
+# gate on a campaign is triage.py, run by the operator.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  harness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: gorp-bench
+      - uses: actions/checkout@v4
+        with:
+          repository: nlaz/gorp
+          path: gorp
+      - uses: actions/checkout@v4
+        with:
+          repository: flowercomputers/ese
+          path: ese
+          token: ${{ secrets.BOG_TOKEN }}
+      - uses: actions/checkout@v4
+        with:
+          repository: flowercomputers/anny
+          path: anny
+          token: ${{ secrets.BOG_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            gorp/target
+          key: cargo-${{ runner.os }}-${{ hashFiles('gorp/Cargo.lock') }}
+          restore-keys: cargo-${{ runner.os }}-
+
+      # The harness is only meaningful against a real binary, so build the
+      # sibling rather than stubbing it.
+      - name: build gorp
+        working-directory: gorp
+        run: cargo build --release
+
+      - name: scorers
+        working-directory: gorp-bench
+        run: |
+          python -m pip install --quiet pytest
+          python -m pytest tests -q
+
+      # Does the tool work on the shapes agents actually type? This is the
+      # check that would have caught §16.10's 47%-empty arm before it cost
+      # $361 (see harness/locbench/preflight.py).
+      - name: preflight
+        working-directory: gorp-bench
+        run: python3 harness/locbench/preflight.py --skip-shims

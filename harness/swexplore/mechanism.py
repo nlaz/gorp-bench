@@ -35,14 +35,19 @@ the damage — `tests.py` matches any repo's test file — so the E/C splits in
 it" and lower bounds on "the agent guessed".
 """
 
+import sys
+from pathlib import Path
 import argparse
 import collections
 import json
 import pathlib
 import statistics as st
+# The engine under test is a sibling checkout; `common` resolves it.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "harness"))
+from common import gorp_repo as common  # noqa: E402
 
 HERE = pathlib.Path(__file__).parent
-DATA = HERE.parent / "data" / "swexplore"
+DATA = common.DATA / "swexplore"
 
 EXTS = (".py", ".js", ".rb", ".c", ".h", ".y", ".l", ".go", ".java",
         ".ts", ".tsx", ".rs", ".php", ".cs", ".cpp", ".test")

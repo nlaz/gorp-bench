@@ -13,8 +13,8 @@ fallback credits a hit on a different file.
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "locbench"))
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "harness" / "locbench"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "harness"))
 
 import replay  # noqa: E402
 

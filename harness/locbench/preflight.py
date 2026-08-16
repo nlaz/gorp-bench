@@ -36,10 +36,14 @@ import sys
 import tempfile
 from collections import Counter
 from pathlib import Path
+# The engine under test is a sibling checkout; `common` resolves it.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "harness"))
+from common import gorp_repo as common  # noqa: E402
 
 HERE = Path(__file__).parent
-ROOT = HERE.parent.parent
-GORP = Path(os.environ.get("GORP_BIN", ROOT / "target/release/gorp"))
+# The fixture corpus lives in the engine's repo, not this one.
+ROOT = common.REPO
+GORP = common.BIN
 FIXTURE = ROOT / "tests/corpus"
 GUESSES = HERE.parent / "queries" / "guesses-v0.jsonl"
 SRC = re.compile(r"\.(py|rs|js|ts|go|java|rb|c|h|cpp|md|txt|json|ya?ml|toml|sh)$")

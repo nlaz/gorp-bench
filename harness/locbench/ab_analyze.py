@@ -15,6 +15,7 @@ last-wins on (instance_id, condition, model) exactly as report.py does,
 and refuses to score an arm pair with no shared instances.
 """
 
+import sys
 import argparse
 import json
 import math
@@ -22,9 +23,12 @@ import random
 import statistics
 from collections import defaultdict
 from pathlib import Path
+# The engine under test is a sibling checkout; `common` resolves it.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "harness"))
+from common import gorp_repo as common  # noqa: E402
 
 HERE = Path(__file__).parent
-DATA = HERE.parent / "data" / "locbench"
+DATA = common.DATA / "locbench"
 
 PRIMARY = "func_acc@10_tol"
 # Co-primary (§16.9a C1): the binary endpoint discards resolution on the

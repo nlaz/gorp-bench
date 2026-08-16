@@ -20,6 +20,8 @@ the campaign; whatever survives is a convenience sample and should be
 reported as one. Indexes are built into a throwaway cache and wiped per repo
 — mind GORP_CACHE_DIR if you point this at a live one.
 """
+import sys
+from pathlib import Path
 import argparse
 import collections
 import json
@@ -29,14 +31,16 @@ import re
 import shutil
 import subprocess
 import tempfile
+# The engine under test is a sibling checkout; `common` resolves it.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "harness"))
+from common import gorp_repo as common  # noqa: E402
 
 HERE = pathlib.Path(__file__).parent
-DATA = HERE.parent / "data" / "swexplore"
-# GORP_BIN lets a probe run against a binary built elsewhere while
-# target/release is serving another eval - the bin identity is the caller's
-# responsibility to record either way.
-SG = pathlib.Path(os.environ.get("GORP_BIN") or
-                  HERE.parent.parent / "target" / "release" / "gorp")
+DATA = common.DATA / "swexplore"
+# common.BIN honours GORP_BIN, which lets a probe run against a binary built
+# elsewhere while target/release is serving another eval — the bin identity is
+# the caller's responsibility to record either way.
+SG = common.BIN
 # Matches both hit-line forms: grep-style `path:41:text` (exact mode and
 # old captures) and the §34 unit-view header `path:41-58` (ranked mode
 # since the unit view shipped). group(1)/group(2) mean the same in both.

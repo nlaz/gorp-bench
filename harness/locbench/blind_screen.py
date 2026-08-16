@@ -27,14 +27,17 @@ import re
 import sys
 from collections import defaultdict
 from pathlib import Path
+# The engine under test is a sibling checkout; `common` resolves it.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "harness"))
+from common import gorp_repo as common  # noqa: E402
 
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
-sys.path.insert(0, str(HERE.parent))
+common.path()
 import leakage  # noqa: E402
 from replay import bootstrap_ci  # noqa: E402
 
-DATA = HERE.parent / "data" / "locbench"
+DATA = common.DATA / "locbench"
 
 
 def _subtokens(word):

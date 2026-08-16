@@ -10,14 +10,18 @@ split, ranked-vs-exact gorp style, median cost/searches. Only instances
 present in BOTH files (per condition) are compared, so deltas are paired.
 """
 
+from pathlib import Path
 import json
 import pathlib
 import statistics
 import sys
 from collections import defaultdict
+# The engine under test is a sibling checkout; `common` resolves it.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "harness"))
+from common import gorp_repo as common  # noqa: E402
 
 HERE = pathlib.Path(__file__).parent
-DATA = HERE.parent / "data" / "locbench"
+DATA = common.DATA / "locbench"
 
 import scoring
 

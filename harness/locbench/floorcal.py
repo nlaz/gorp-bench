@@ -29,15 +29,18 @@ import sys
 import tempfile
 from collections import defaultdict
 from pathlib import Path
+# The engine under test is a sibling checkout; `common` resolves it.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "harness"))
+from common import gorp_repo as common  # noqa: E402
 
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
-sys.path.insert(0, str(HERE.parent))
+common.path()
 
 import run as locbench  # noqa: E402
 from replay import gold_files  # noqa: E402
 
-DATA = HERE.parent / "data" / "locbench"
+DATA = common.DATA / "locbench"
 
 
 def rank_of_gold_hits(hits, golds, scope_rel):

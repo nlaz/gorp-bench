@@ -31,9 +31,12 @@ import json
 import random
 import sys
 from pathlib import Path
+# The engine under test is a sibling checkout; `common` resolves it.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "harness"))
+from common import gorp_repo as common  # noqa: E402
 
 HERE = Path(__file__).parent
-DATA = HERE.parent / "data" / "swexplore"
+DATA = common.DATA / "swexplore"
 sys.path.insert(0, str(HERE.parent / "locbench"))
 from tierframe import interleaved_by_repo  # noqa: E402
 

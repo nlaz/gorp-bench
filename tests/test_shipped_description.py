@@ -20,8 +20,16 @@ import re
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "eval" / "locbench"))
+BENCH = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(BENCH / "harness" / "locbench"))
+sys.path.insert(0, str(BENCH / "harness"))
+from common import gorp_repo as common  # noqa: E402
+
+# The description under test is *shipped* in gorp's README, while the arm it
+# must match is registered here. That split is the whole point of the test:
+# an edited README is an unmeasured description, and the two repos can only
+# drift apart silently if nothing joins them.
+ROOT = common.REPO
 
 # The arm README ships. One name, so a future desc arm needs one edit here.
 SHIPPED = "desc-v12"

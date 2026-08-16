@@ -21,11 +21,14 @@ import json
 import sys
 from collections import Counter
 from pathlib import Path, PurePosixPath
+# The engine under test is a sibling checkout; `common` resolves it.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "harness"))
+from common import gorp_repo as common  # noqa: E402
 
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
 
-DATA = HERE.parent / "data" / "locbench"
+DATA = common.DATA / "locbench"
 
 # Every name the engine has shipped under, plus the arm-only aliases. The
 # old ones stay because the shim logs they appear in are recorded facts:

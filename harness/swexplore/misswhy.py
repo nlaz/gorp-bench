@@ -42,14 +42,19 @@ Output: a table, plus --json for per-region rows (instance, region, bucket,
 flags, ranked queries) that the replay step consumes.
 """
 
+import sys
+from pathlib import Path
 import argparse
 import collections
 import json
 import pathlib
 import re
+# The engine under test is a sibling checkout; `common` resolves it.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "harness"))
+from common import gorp_repo as common  # noqa: E402
 
 HERE = pathlib.Path(__file__).parent
-DATA = HERE.parent / "data" / "swexplore"
+DATA = common.DATA / "swexplore"
 
 # argv flags whose VALUE follows as a separate token — skip both when
 # deciding whether a call was scoped by positional path args.

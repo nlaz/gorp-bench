@@ -31,12 +31,17 @@ hybrid <=30 -> in-pool ordering; else the first variant whose top-5 has it
 names the stage that lost it (bm25 -> fusion drowned a lexical hit, nofine ->
 fine rerank killed it, window -> function chunking did); none -> vocab gap.
 """
+import sys
+from pathlib import Path
 import argparse, json, os, pathlib, re, shutil, subprocess, collections, time, tempfile
+# The engine under test is a sibling checkout; `common` resolves it.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "harness"))
+from common import gorp_repo as common  # noqa: E402
 
 HERE = pathlib.Path(__file__).parent
 ROOT = HERE.parent.parent
-SG = ROOT / "target/release/gorp"
-DATA = ROOT / "eval/data/swexplore"
+SG = common.BIN
+DATA = common.DATA / "swexplore"
 K = 30
 
 ap = argparse.ArgumentParser()

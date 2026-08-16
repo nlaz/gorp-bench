@@ -5,7 +5,8 @@ that exists, not the regexes one might imagine."""
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "locbench"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "harness" / "locbench"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "harness"))
 
 import ladder  # noqa: E402
 

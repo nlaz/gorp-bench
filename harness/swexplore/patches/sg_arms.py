@@ -23,7 +23,7 @@ What this adds on top of their explorer, and nothing else:
     off the terminal `{"type":"result"}` event. Same fields and the same
     keep-`usage`-whole convention as `locbench/run.py:696-703`, so a new
     usage field survives without a harness change.
-  * `locbench/shim.py` on PATH, unchanged — it derives the real binary from
+  * `common/shim.py` on PATH, unchanged — it derives the real binary from
     `argv[1]`, so `sg` needs no edit there. Buys per-invocation argv, exit,
     stdout bytes and wall ms, which is what the sg-invocation tripwire reads.
   * `GORP_CACHE_DIR` per arm and `GORP_TRACE_FILE` per cond dir.
@@ -237,10 +237,17 @@ def _amend(prompt: str, arm: str) -> str:
     return prompt.replace(PROMPT_CLAUSE, clause)
 
 HERE = Path(__file__).resolve().parent
-# eval/data/swexplore/upstream/explorers -> repo root
-REPO_ROOT = HERE.parents[4]
-LOCBENCH = REPO_ROOT / "eval" / "locbench"
-GORP_BIN = Path(os.environ.get("GORP_BIN", REPO_ROOT / "target/release/gorp"))
+# This file does not run from where it is checked in: fetch.sh copies it into
+# data/swexplore/upstream/explorers/, so paths resolve from *there*.
+#   data/swexplore/upstream/explorers -> bench repo root
+BENCH_ROOT = HERE.parents[4]
+LOCBENCH = BENCH_ROOT / "harness" / "locbench"
+SHIM = BENCH_ROOT / "harness" / "common" / "shim.py"
+# The engine is a sibling checkout, not part of this repo. Deliberately not
+# imported from harness/common: this file runs from inside the vendored
+# upstream, where that package is not on the path.
+GORP_REPO = Path(os.environ.get("GORP_REPO") or BENCH_ROOT.parent / "gorp")
+GORP_BIN = Path(os.environ.get("GORP_BIN", GORP_REPO / "target/release/gorp"))
 RG_BIN = os.environ.get("RG_BIN", "/opt/homebrew/bin/rg")
 
 # Provenance level. `full` is for the ladder rungs, where the point is to be
@@ -363,7 +370,7 @@ class ArmExplorer(ClaudeCodeExplorer):
         for tool in ("rg", "sg", "grep", "egrep", "fgrep", "git"):
             w = bin_dir / tool
             w.write_text(
-                f'#!/bin/sh\nexec /usr/bin/env python3 "{LOCBENCH / "shim.py"}" {tool} "$@"\n'
+                f'#!/bin/sh\nexec /usr/bin/env python3 "{SHIM}" {tool} "$@"\n'
             )
             w.chmod(0o755)
 

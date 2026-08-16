@@ -21,15 +21,19 @@ this is a diagnostic on top of that, and its strata are chosen by an engine
 behaviour rather than by the registration. Report it as such.
 """
 
+from pathlib import Path
 import argparse
 import collections
 import json
 import pathlib
 import statistics
 import sys
+# The engine under test is a sibling checkout; `common` resolves it.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "harness"))
+from common import gorp_repo as common  # noqa: E402
 
 HERE = pathlib.Path(__file__).parent
-DATA = HERE.parent / "data" / "swexplore"
+DATA = common.DATA / "swexplore"
 sys.path.insert(0, str(HERE.parent / "locbench"))
 from ab_analyze import boot_ci, mcnemar  # noqa: E402
 

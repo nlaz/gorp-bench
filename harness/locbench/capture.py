@@ -31,6 +31,9 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+# The engine under test is a sibling checkout; `common` resolves it.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "harness"))
+from common import gorp_repo as common  # noqa: E402
 
 # `gorp` or `rg` in *command* position: at the start, or after a pipe,
 # semicolon, `&&`, or an env-var prefix. Deliberately not a substring test —
@@ -38,7 +41,7 @@ from pathlib import Path
 INVOKES_SEARCH = re.compile(r"(?:^|[;&|]\s*|\b[A-Z_]+=\S+\s+)(gorp|semgrep|sg|rg)\s")
 
 HERE = Path(__file__).parent
-DATA = HERE.parent / "data" / "locbench"
+DATA = common.DATA / "locbench"
 sys.path.insert(0, str(HERE))
 
 import run  # noqa: E402  — for DENIAL_MARKER; run.py imports nothing from here

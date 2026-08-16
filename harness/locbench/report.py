@@ -18,9 +18,12 @@ from collections import defaultdict
 from pathlib import Path
 
 import scoring
+# The engine under test is a sibling checkout; `common` resolves it.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "harness"))
+from common import gorp_repo as common  # noqa: E402
 
 HERE = Path(__file__).parent
-DATA = HERE.parent / "data" / "locbench"
+DATA = common.DATA / "locbench"
 DEFAULT = DATA / "results.jsonl"
 
 

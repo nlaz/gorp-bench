@@ -1,0 +1,10 @@
+# Campaign output, checked-out instance repos, vendored upstream harnesses,
+# built indexes, viewers. Tens of gigabytes, all of it either a measurement
+# (kept, but too big for git) or rebuildable by fetch.sh.
+data/
+
+# Perf-harness corpora and results (bench/fetch-corpora.sh refetches).
+bench/corpora/
+bench/results/
+
+__pycache__/

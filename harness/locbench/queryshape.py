@@ -33,13 +33,16 @@ import statistics
 import sys
 from collections import Counter, defaultdict
 from pathlib import Path
+# The engine under test is a sibling checkout; `common` resolves it.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "harness"))
+from common import gorp_repo as common  # noqa: E402
 
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
 
 from harvest import harvest  # noqa: E402
 
-DATA = HERE.parent / "data" / "locbench"
+DATA = common.DATA / "locbench"
 
 # English function words. Their presence is what makes a query a description
 # rather than a name — and SIF weights them toward zero (a/(a+p)), so they are

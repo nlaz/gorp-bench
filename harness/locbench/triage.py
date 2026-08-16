@@ -42,9 +42,12 @@ import re
 import sys
 from collections import Counter, defaultdict
 from pathlib import Path
+# The engine under test is a sibling checkout; `common` resolves it.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "harness"))
+from common import gorp_repo as common  # noqa: E402
 
 HERE = Path(__file__).parent
-DATA = HERE.parent / "data" / "locbench"
+DATA = common.DATA / "locbench"
 
 # Gate thresholds. Stated as constants so a run that trips one names the number
 # it tripped, and so loosening a gate is a visible edit rather than a judgement

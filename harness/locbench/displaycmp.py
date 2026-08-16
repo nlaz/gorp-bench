@@ -25,13 +25,16 @@ import statistics as st
 import sys
 from collections import defaultdict
 from pathlib import Path
+# The engine under test is a sibling checkout; `common` resolves it.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "harness"))
+from common import gorp_repo as common  # noqa: E402
 
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
 
 from ab_analyze import boot_ci  # noqa: E402  — one bootstrap, one convention
 
-DATA = HERE.parent / "data" / "locbench"
+DATA = common.DATA / "locbench"
 SEARCH_TOOLS = ("rg", "gorp", "sg", "search")
 
 # What a truncated tool result looks like from the agent's side. §25.1 tripwire

@@ -38,10 +38,14 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import scoring
+# The engine under test is a sibling checkout; `common` resolves it.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "harness"))
+from common import gorp_repo as common  # noqa: E402
 
 HERE = Path(__file__).parent
-DATA = HERE.parent / "data" / "locbench"
-GORP = Path(os.environ.get("GORP_BIN", HERE.parent.parent / "target/release/gorp"))
+DATA = common.DATA / "locbench"
+GORP = common.BIN
+SHIM = HERE.parent / "common" / "shim.py"
 RG = os.environ.get("RG_BIN", "/opt/homebrew/bin/rg")
 CLAUDE = os.environ.get("CLAUDE_BIN", "claude")
 
@@ -582,7 +586,7 @@ def make_shims(bin_dir):
     bin_dir.mkdir(parents=True, exist_ok=True)
     for tool in [*SHIMMED_SEARCH_TOOLS, *BLOCKED_TOOLS]:
         w = bin_dir / tool
-        w.write_text(f'#!/bin/sh\nexec /usr/bin/env python3 "{HERE / "shim.py"}" {tool} "$@"\n')
+        w.write_text(f'#!/bin/sh\nexec /usr/bin/env python3 "{SHIM}" {tool} "$@"\n')
         w.chmod(0o755)
 
 

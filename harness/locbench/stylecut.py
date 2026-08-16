@@ -29,6 +29,7 @@ control and not an assignment. n is small in the stratum that carries the
 result. The direction is far better established than the magnitude.
 """
 
+import sys
 import argparse
 import json
 import os
@@ -36,9 +37,12 @@ import random
 import re
 from collections import defaultdict
 from pathlib import Path
+# The engine under test is a sibling checkout; `common` resolves it.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "harness"))
+from common import gorp_repo as common  # noqa: E402
 
 HERE = Path(__file__).parent
-DATA = HERE.parent / "data" / "locbench"
+DATA = common.DATA / "locbench"
 
 FUNC = {"where", "is", "the", "a", "an", "how", "what", "does", "do", "in",
         "to", "for", "of", "and", "are", "when", "which", "that", "this", "it",
