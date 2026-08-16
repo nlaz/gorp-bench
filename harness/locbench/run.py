@@ -95,6 +95,10 @@ TOOL_LINES["semgrep"] = tool_line("semgrep")
 # Name-gravity ablation: identical binary, identical description — only the
 # tool's name changes. If "semgrep" imports grep habits, "search" shouldn't.
 TOOL_LINES["search"] = tool_line("search")
+# The third name in that ablation, and the one the tool actually ships under
+# since the 2026-08 rename. Same v3 line as the other two, so the contrast
+# stays a pure name contrast.
+TOOL_LINES["gorp"] = tool_line("gorp")
 # Guided routing (v2, replaces "use whichever tool fits the query"): the
 # pilot showed agents pick rg 82% of the time on habit when given no
 # criteria — this line tests whether an explicit routing rule fixes that.
@@ -327,7 +331,7 @@ DISPLAY_CONDITIONS = ("disp-line", "disp-full", "disp-head",
                       "pl-1", "pl-18", "pl-full", "pl-18k5",
                       "disp-unit", "disp-nounit")
 
-ARM_TOOL = {"desc-v9": "sg", "desc-v12": "gorp",
+ARM_TOOL = {"desc-v9": "sg", "desc-v12": "gorp", "gorp": "gorp",
             **{n: "sg" for n in DISPLAY_CONDITIONS}}
 
 # Every search-tool name the shims cover. `sg` is here so its shim exists for
