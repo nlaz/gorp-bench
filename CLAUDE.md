@@ -37,6 +37,15 @@ exists because something went wrong that no unit test could see.
   everything else blocked, including `git` — history after `base_commit`
   contains the real fix). `run.py` is the driver, `harvest.py` mines shim logs
   into guess corpora, `guessplay.py` replays them against real gold.
+- `harness/common/publish_traces.py` — **the one artifact that crosses into
+  gorp.** Harvested searches + benchmark gold -> a tiered trace set
+  (`blind`/`guess`/`golden`), written to `../gorp/eval/queries/traces-*.jsonl`
+  and committed there. The tier rule is *gorp's* (`eval/traces.py`, imported
+  through `common.path()`), so one rule serves both repos and gorp's
+  `validate_queries --traces` can recompute every tier as a drift guard.
+  Deduped by (query, instance): the log holds 22k invocations but 10k distinct
+  questions, and scoring the raw log would weight a query by how often an
+  agent repeated it.
 - `bench/` — perf vs grep/ripgrep/ugrep/ack. Competitors are invoked by
   **absolute path** because dev shells wrap `grep`; stdout goes to a real temp
   file, not `/dev/null`, because ugrep short-circuits on the null device.

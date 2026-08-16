@@ -77,6 +77,20 @@ Campaign output lands in `data/` (gitignored, tens of gigabytes). The
 scorers, the arms, and the registered frames are checked in, because those
 are what make a published number reproducible.
 
+## Publishing traces back to gorp
+
+Campaigns produce something reusable for free: the searches agents actually
+typed, with known gold. `publish_traces.py` turns them into a tiered trace
+set that the engine repo scores without any agent, budget, or campaign.
+
+```sh
+python3 harness/common/publish_traces.py --out ../gorp/eval/queries/traces-v2.jsonl
+```
+
+It stamps each query `blind` / `guess` / `golden` using **gorp's** tier rule,
+imported from the sibling checkout, so the repo that writes these files and
+the repo that reads them cannot disagree about what a tier means.
+
 ## What the arm names mean
 
 `cc`, `cc-rg`, `cc-sg`, `desc-v4` … `desc-v12`, `semgrep`, `sg`, `search` —
