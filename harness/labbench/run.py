@@ -137,15 +137,31 @@ def run_cell(row_frame: dict, arm: str, args, run_id: str) -> dict:
         "cell_dir": str(cell_dir), "upstream_run_dir": str(upstream_run_dir),
     }
 
+    # Family routing: lab-cc-* runs the Agent SDK entry point (subscription
+    # auth via the operator's Claude Code login); lab-* runs upstream's own
+    # loop (API key). Same env contract, same artifacts, different loop.
+    cc = arm.startswith("lab-cc-")
+    model = args.model.split("/", 1)[-1] if cc else args.model
+    # row["model"] stays args.model verbatim — it is the resume/dedupe key.
+    # The family axis is already in the arm name; recorded explicitly too.
+    row["family"] = "cc" if cc else "api"
+    if cc:
+        agent_cmd = ["uv", "run", "--with", "claude-agent-sdk", "python",
+                     "lab_cc_run.py", "--model", model, "--task", task,
+                     "--run-id", upstream_run_id,
+                     "--max-turns", str(args.max_turns)]
+    else:
+        agent_cmd = ["uv", "run", "python", "-m", "harness.run",
+                     "--model", model, "--task", task,
+                     "--run-id", upstream_run_id,
+                     "--max-turns", str(args.max_turns)]
+
     t0 = time.time()
     agent_log = cell_dir / "agent_stdout.log"
     try:
         with agent_log.open("wb") as f:
             p = subprocess.run(
-                ["uv", "run", "python", "-m", "harness.run",
-                 "--model", args.model, "--task", task,
-                 "--run-id", upstream_run_id,
-                 "--max-turns", str(args.max_turns)],
+                agent_cmd,
                 cwd=str(UPSTREAM), env=env, stdout=f, stderr=subprocess.STDOUT,
                 timeout=args.timeout)
         if p.returncode != 0:
@@ -178,11 +194,18 @@ def run_cell(row_frame: dict, arm: str, args, run_id: str) -> dict:
         row["status"] = "deliverable_missing"
 
     if row["status"] == "ok" and not args.no_judge:
+        judge_model = args.judge_model.split("/", 1)[-1]
+        if cc:
+            judge_cmd = ["uv", "run", "python", "lab_cc_judge.py",
+                         "--run-id", upstream_run_id, "--task", task,
+                         "--judge-model", judge_model]
+        else:
+            judge_cmd = ["uv", "run", "python", "-m", "evaluation.run_eval",
+                         "--run-id", upstream_run_id, "--task", task,
+                         "--judge-model", judge_model]
         try:
             j = subprocess.run(
-                ["uv", "run", "python", "-m", "evaluation.run_eval",
-                 "--run-id", upstream_run_id, "--task", task,
-                 "--judge-model", args.judge_model],
+                judge_cmd,
                 cwd=str(UPSTREAM), env=env, capture_output=True,
                 timeout=args.judge_timeout)
             scores = _load_json(upstream_run_dir / "scores.json")
@@ -265,6 +288,10 @@ def main():
     if any(lab_arms.ARM_TOOL.get(a) == "rg" for a in arms) \
             and not Path(RG_BIN).exists():
         sys.exit(f"no ripgrep at {RG_BIN} (set RG_BIN)")
+    if any(a.startswith("lab-cc-") for a in arms) \
+            and not shutil.which("claude"):
+        sys.exit("lab-cc-* arms need the `claude` CLI (subscription auth) "
+                 "on PATH")
     if not (UPSTREAM / "lab_arms.py").exists():
         sys.exit("upstream not vendored/patched — run fetch.sh first")
     if not (DATA / "corpus-manifest.json").exists():

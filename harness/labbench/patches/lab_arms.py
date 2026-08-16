@@ -173,12 +173,26 @@ RG_TOOL = {
 # arm -> extra structured tool, or None. ADDITIVE by construction: upstream's
 # six tools always stay, so lab-base is upstream verbatim and the treatment
 # is exactly one added tool.
+#
+# Two families share these tool surfaces and differ in ONE thing — who runs
+# the agent loop:
+#   lab-*     upstream's own agent_loop.py over the Anthropic SDK (API key)
+#   lab-cc-*  the Claude Agent SDK / claude CLI (subscription auth; the
+#             operator's Claude Code login, never an extracted token), with
+#             the same seven tools exposed as in-process MCP tools and the
+#             built-ins disabled (lab_cc_run.py)
+# Families are separate frozen arm names because a different loop is a
+# different arm; contrasts are valid WITHIN a family, never across.
 ARMS = {
     "lab-base": None,
     "lab-rg": RG_TOOL,
     "lab-gorp": GORP_TOOL,
+    "lab-cc-base": None,
+    "lab-cc-rg": RG_TOOL,
+    "lab-cc-gorp": GORP_TOOL,
 }
-ARM_TOOL = {"lab-rg": "rg", "lab-gorp": "gorp"}
+ARM_TOOL = {"lab-rg": "rg", "lab-gorp": "gorp",
+            "lab-cc-rg": "rg", "lab-cc-gorp": "gorp"}
 
 ARM = os.environ.get("LABBENCH_ARM", "lab-base")
 if ARM not in ARMS:
@@ -205,16 +219,23 @@ PROMPT_CLAUSE = (
     "- Use `read` to consume input files (handles .docx, .xlsx, .pptx, "
     ".pdf, and\n  plain text)."
 )
+_RG_CLAUSE = (
+    "- Use the `rg` tool to locate relevant passages across all "
+    "documents before deciding what to read."
+)
+_GORP_CLAUSE = (
+    "- Use the `gorp` tool to locate relevant passages across all "
+    "documents before deciding what to read."
+)
 ARM_CLAUSE = {
     "lab-base": None,
-    "lab-rg": (
-        "- Use the `rg` tool to locate relevant passages across all "
-        "documents before deciding what to read."
-    ),
-    "lab-gorp": (
-        "- Use the `gorp` tool to locate relevant passages across all "
-        "documents before deciding what to read."
-    ),
+    "lab-rg": _RG_CLAUSE,
+    "lab-gorp": _GORP_CLAUSE,
+    # cc family: clause identical by construction — the family axis is the
+    # loop, never the prompt.
+    "lab-cc-base": None,
+    "lab-cc-rg": _RG_CLAUSE,
+    "lab-cc-gorp": _GORP_CLAUSE,
 }
 
 

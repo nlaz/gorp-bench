@@ -110,6 +110,18 @@ def test_a_missing_anchor_clause_raises_instead_of_running_untreated():
 
 def test_arm_registry_is_additive_one_tool_per_treatment():
     assert lab_arms.ARMS["lab-base"] is None
-    assert lab_arms.ARM_TOOL == {"lab-rg": "rg", "lab-gorp": "gorp"}
+    assert lab_arms.ARM_TOOL == {"lab-rg": "rg", "lab-gorp": "gorp",
+                                 "lab-cc-rg": "rg", "lab-cc-gorp": "gorp"}
     assert lab_arms.ARMS["lab-rg"]["name"] == "rg"
     assert lab_arms.ARMS["lab-gorp"]["name"] == "gorp"
+
+
+def test_the_cc_family_differs_from_api_in_the_loop_only():
+    # The family axis is who drives the agent; every prompt-visible surface
+    # must be IDENTICAL between lab-X and lab-cc-X, or a family contrast
+    # smuggles in a second variable.
+    for base, cc in (("lab-base", "lab-cc-base"), ("lab-rg", "lab-cc-rg"),
+                     ("lab-gorp", "lab-cc-gorp")):
+        assert lab_arms.ARMS[base] is lab_arms.ARMS[cc]
+        assert lab_arms.ARM_CLAUSE[base] == lab_arms.ARM_CLAUSE[cc]
+        assert lab_arms.ARM_TOOL.get(base) == lab_arms.ARM_TOOL.get(cc)

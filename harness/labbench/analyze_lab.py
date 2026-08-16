@@ -35,12 +35,25 @@ from ab_analyze import boot_ci, mcnemar  # noqa: E402
 
 DATA = common.DATA / "labbench"
 
+# Families are analyzed separately, never pooled: the loop is a treatment.
+# --family cc swaps every arm name; the contrast structure is identical.
+FAMILY_PREFIX = {"api": "lab-", "cc": "lab-cc-"}
 ARMS = ("lab-base", "lab-rg", "lab-gorp")
-ARM_TOOL = {"lab-rg": "rg", "lab-gorp": "gorp"}
+ARM_TOOL = {"lab-rg": "rg", "lab-gorp": "gorp",
+            "lab-cc-rg": "rg", "lab-cc-gorp": "gorp"}
 # Arm names contain hyphens; contrast pairs separate with ':' if overridden.
 CONTRASTS = (("lab-gorp", "lab-rg", "PRIMARY  gorp − rg (ranking vs exact)"),
              ("lab-rg", "lab-base", "confound rg − base (search tool at all)"),
              ("lab-gorp", "lab-base", "product  gorp − base"))
+
+
+def family_arms(family):
+    prefix = FAMILY_PREFIX[family]
+    rename = lambda n: n.replace("lab-", prefix, 1)  # noqa: E731
+    arms = tuple(rename(a) for a in ARMS)
+    contrasts = tuple((rename(a), rename(b), label)
+                      for a, b, label in CONTRASTS)
+    return arms, contrasts
 PRIMARY = ("all_pass", "all-pass")
 COPRIMARY = (("total_tokens", "tokens"), ("turn_count", "turns"))
 SECONDARY = (("criterion_pass_rate", "crit-pass"),
@@ -120,28 +133,32 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--results", type=Path, default=DATA / "results.jsonl")
     ap.add_argument("--run-id", default=None)
+    ap.add_argument("--family", choices=sorted(FAMILY_PREFIX), default="api",
+                    help="which arm family to analyze (never pooled)")
     args = ap.parse_args()
 
+    arms, contrasts = family_arms(args.family)
+    base_arm, rg_arm, gorp_arm = arms
     if not args.results.exists():
         sys.exit(f"no such results file: {args.results}")
     by_arm = load(args.results, args.run_id)
-    missing = [a for a in ARMS if not by_arm.get(a)]
+    missing = [a for a in arms if not by_arm.get(a)]
     if missing:
         sys.exit(f"no ok rows for arm(s) {missing}"
                  f"{f' in run {args.run_id}' if args.run_id else ''}")
     common_tasks = sorted(set.intersection(
-        *(set(by_arm[a]) for a in ARMS)))
-    print(f"analyze: {len(common_tasks)} tasks complete across all "
-          f"{len(ARMS)} arms "
-          f"({', '.join(f'{a}={len(by_arm[a])}' for a in ARMS)})")
+        *(set(by_arm[a]) for a in arms)))
+    print(f"analyze [{args.family}]: {len(common_tasks)} tasks complete "
+          f"across all {len(arms)} arms "
+          f"({', '.join(f'{a}={len(by_arm[a])}' for a in arms)})")
     if not common_tasks:
         sys.exit("nothing to pair yet")
 
-    base_rate = sum(val(by_arm["lab-base"][t], "all_pass")
+    base_rate = sum(val(by_arm[base_arm][t], "all_pass")
                     for t in common_tasks) / len(common_tasks)
-    print(f"lab-base all-pass rate: {base_rate:.1%} (the anchor)\n")
+    print(f"{base_arm} all-pass rate: {base_rate:.1%} (the anchor)\n")
 
-    for a, b, label in CONTRASTS:
+    for a, b, label in contrasts:
         print(f"  {label}")
         line(PRIMARY[1], pairs_for(by_arm, a, b, PRIMARY[0], common_tasks))
         for key, lbl in COPRIMARY:
@@ -164,7 +181,7 @@ def main():
         print()
 
     print("  mediation (exploratory — conditions on post-treatment behaviour)")
-    for arm in ARMS:
+    for arm in arms:
         tool = ARM_TOOL.get(arm)
         if not tool:
             continue
@@ -174,11 +191,11 @@ def main():
         share = len(invoked) / len(rows) if rows else 0.0
         print(f"    {arm}: invoked {tool} in {len(invoked)}/{len(rows)} "
               f"sessions ({share:.0%})")
-        if invoked and arm == "lab-gorp":
-            sub = [t for t in invoked if t in by_arm["lab-rg"]]
-            print(f"      primary over the invoking subset:")
+        if invoked and arm == gorp_arm:
+            sub = [t for t in invoked if t in by_arm[rg_arm]]
+            print("      primary over the invoking subset:")
             line("      " + PRIMARY[1],
-                 pairs_for(by_arm, "lab-gorp", "lab-rg", PRIMARY[0], sub))
+                 pairs_for(by_arm, gorp_arm, rg_arm, PRIMARY[0], sub))
 
 
 if __name__ == "__main__":

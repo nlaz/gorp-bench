@@ -44,6 +44,16 @@ structured ripgrep tool), `lab-gorp` (+ the same tool shape backed by gorp);
 the primary contrast is gorp − rg. Needs `uv`, `pandoc`, `podman`, and an
 `ANTHROPIC_API_KEY` or `ANTHROPIC_AUTH_TOKEN` in the vendored checkout's `.env`.
 
+A second arm family, **`lab-cc-base` / `lab-cc-rg` / `lab-cc-gorp`**, runs
+the same tasks, sandbox, and tool surfaces with ONE substitution: the agent
+loop is the Claude Agent SDK (`lab_cc_run.py`) and the judge is `claude -p`
+(`lab_cc_judge.py`), so both are funded by the operator's Claude Code
+subscription login instead of an API key — no token is copied anywhere; the
+CLI holds its own credentials. Claude Code subscription OAuth tokens are NOT
+valid for the raw Messages API, and this family is the supported way to run
+on one. Contrasts are valid within a family, never across (the loop is a
+treatment), so analyses take `--family api|cc` and rows are never pooled.
+
 ```sh
 bash harness/labbench/fetch.sh                    # vendor + venv + corpus
 python3 harness/labbench/lab_frame.py --check     # the registered 150-task frame

@@ -55,8 +55,15 @@ MAX_DELIVERABLE_MISSING = 0
 MAX_JUDGE_FAILURES = 0
 MAX_LEAKED_CONTAINERS = 0
 
+# Two families share the tool axis; a triage invocation gates ONE family's
+# arm set (--arms, default the api family) — the pairing gate would
+# otherwise demand six rows per task from a three-arm campaign. The
+# unexpected-labels gate checks against the union: any registered arm is a
+# valid label, anything else is a driver bug.
 ARMS = ("lab-base", "lab-rg", "lab-gorp")
-ARM_TOOL = {"lab-rg": "rg", "lab-gorp": "gorp"}
+ARMS_ALL = ARMS + ("lab-cc-base", "lab-cc-rg", "lab-cc-gorp")
+ARM_TOOL = {"lab-rg": "rg", "lab-gorp": "gorp",
+            "lab-cc-rg": "rg", "lab-cc-gorp": "gorp"}
 
 # Adaptation 2: point the imported checks at labbench's layout.
 triage.DATA = DATA
@@ -138,7 +145,7 @@ def check_harness_lab(rows, arms):
     # Registered-arms pair (from check_harness_swex): every row's arm is
     # registered, and every task with any ok row has an ok row per arm.
     labels = {r.get("arm") for r in rows}
-    bad = labels - set(ARMS)
+    bad = labels - set(ARMS_ALL)
     triage.gate("unexpected arm labels", len(bad), 0, detail=", ".join(sorted(bad)))
     done = defaultdict(set)
     for r in rows:

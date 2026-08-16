@@ -38,10 +38,11 @@ git -C "$OUT/upstream" sparse-checkout set --no-cone \
     'tasks/**/task.json' 'tasks/**/instructions.md'
 git -C "$OUT/upstream" checkout -q "$UPSTREAM_SHA"
 git -C "$OUT/upstream" checkout -q -- .          # drop any prior patch
-cp patches/lab_arms.py "$OUT/upstream/lab_arms.py"
+cp patches/lab_arms.py patches/lab_cc_run.py patches/lab_cc_judge.py "$OUT/upstream/"
 git -C "$OUT/upstream" apply "$(pwd)/patches/0001-run-arm-executor-metrics.patch"
-python3 -m py_compile "$OUT/upstream/harness/run.py" "$OUT/upstream/lab_arms.py"
-echo "harness ready: upstream@${UPSTREAM_SHA:0:7} + 1 file + 1 patch"
+python3 -m py_compile "$OUT/upstream/harness/run.py" "$OUT/upstream/lab_arms.py" \
+                      "$OUT/upstream/lab_cc_run.py" "$OUT/upstream/lab_cc_judge.py"
+echo "harness ready: upstream@${UPSTREAM_SHA:0:7} + 3 files + 1 patch"
 
 # ------------------------------------------------------------------- venv
 # Materialize upstream's venv now, not at campaign time: build_corpus.py and

@@ -53,6 +53,13 @@ exists because something went wrong that no unit test could see.
   between rungs (an adaptation of locbench's `triage.py`, not a fork).
   Scoring is upstream's judge — no scorer of ours exists; our tests cover
   the naming round-trip, the frame, the gates, and the descriptions.
+  Two arm families share the tool surfaces and differ ONLY in the loop:
+  `lab-*` = upstream's agent_loop over the Anthropic SDK (API key or
+  bearer token in upstream/.env); `lab-cc-*` = the Claude Agent SDK +
+  `claude -p` judge, funded by the operator's Claude Code subscription
+  login (never an extracted OAuth token — those are not valid for the raw
+  API, and impersonating Claude Code to make them work is off the table).
+  Families are separate frozen arm names; contrasts never cross them.
 - `harness/common/publish_traces.py` — **the one artifact that crosses into
   gorp.** Harvested searches + benchmark gold -> a tiered trace set
   (`blind`/`guess`/`golden`), written to `../gorp/eval/queries/traces-*.jsonl`

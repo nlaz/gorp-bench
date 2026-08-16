@@ -103,19 +103,20 @@ def check_vendoring():
     porcelain = [e for e in entries
                  # untracked .md files under tasks/ are the corpus, not drift
                  if not (e.startswith("?? tasks/") and e.endswith(".md"))]
-    expect = {" M harness/run.py", "?? lab_arms.py"}
+    overlays = ("lab_arms.py", "lab_cc_run.py", "lab_cc_judge.py")
+    expect = {" M harness/run.py"} | {f"?? {f}" for f in overlays}
     got = set(porcelain)
     if got != expect:
         return fail("vendoring", f"unexpected delta: {sorted(got ^ expect)[:5]}")
-    p = run([sys.executable, "-m", "py_compile",
-             UPSTREAM / "harness/run.py", UPSTREAM / "lab_arms.py"])
+    p = run([sys.executable, "-m", "py_compile", UPSTREAM / "harness/run.py",
+             *(UPSTREAM / f for f in overlays)])
     if p.returncode != 0:
         return fail("vendoring", p.stderr.decode()[-200:])
-    checked_in = (HERE / "patches" / "lab_arms.py").read_bytes()
-    if (UPSTREAM / "lab_arms.py").read_bytes() != checked_in:
-        return fail("vendoring", "deployed lab_arms.py != checked-in copy "
-                                 "(re-run fetch.sh)")
-    ok("vendoring", f"upstream@{head[:7]} + 1 file + 1 patch")
+    for f in overlays:
+        if (UPSTREAM / f).read_bytes() != (HERE / "patches" / f).read_bytes():
+            return fail("vendoring", f"deployed {f} != checked-in copy "
+                                     f"(re-run fetch.sh)")
+    ok("vendoring", f"upstream@{head[:7]} + {len(overlays)} files + 1 patch")
 
 
 # ---------------------------------------------------------------- 2. frame
@@ -307,7 +308,7 @@ def check_arm_wiring():
         if r["extra"] != expect_extra:
             return fail("arm-wiring", f"{arm}: extra tool {r['extra']!r}, "
                                       f"expected {expect_extra!r}")
-        if r["amended"] != (arm != "lab-base"):
+        if r["amended"] != (lab_arms.ARM_CLAUSE[arm] is not None):
             return fail("arm-wiring", f"{arm}: prompt amended={r['amended']}")
         if not r["track"]["ok"]:
             return fail("arm-wiring", f"desc drift: {r['track']['missing']}")
@@ -315,7 +316,8 @@ def check_arm_wiring():
                                         "glob", "grep"}:
             return fail("arm-wiring", f"upstream tool surface changed: "
                                       f"{r['upstream_names']}")
-    ok("arm-wiring", "3 arms; base untouched; treatments +1 tool; descs track")
+    ok("arm-wiring", f"{len(lab_arms.ARMS)} arms across 2 families; base "
+                     f"untouched; treatments +1 tool; descs track")
 
 
 # ------------------------------------------------------------ auth probe
@@ -362,19 +364,26 @@ def check_runtime(skip_podman, skip_keys):
         else:
             ok("runtime", "podman up")
     if not skip_keys:
-        # Either credential shape works: the SDK sends ANTHROPIC_API_KEY as
-        # x-api-key and ANTHROPIC_AUTH_TOKEN as a Bearer header, and both
-        # upstream clients are constructed bare (`anthropic.Anthropic()`),
-        # so they inherit whichever the env provides.
+        # Two credential paths, one per family. lab-*: the SDK sends
+        # ANTHROPIC_API_KEY as x-api-key or ANTHROPIC_AUTH_TOKEN as a Bearer
+        # header (both upstream clients are constructed bare, so env decides).
+        # lab-cc-*: the `claude` CLI's own subscription login — no token
+        # ever crosses into this harness. Fail only when NEITHER family
+        # could run; name what each present credential unlocks.
         names = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")
         dotenv = ((UPSTREAM / ".env").read_text()
                   if (UPSTREAM / ".env").exists() else "")
-        present = [n for n in names if n in os.environ or n in dotenv]
-        if not present:
-            fail("runtime", "no ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN "
-                            "in env or upstream/.env")
-        else:
-            ok("runtime", f"agent/judge credential present ({present[0]})")
+        api_cred = [n for n in names if n in os.environ or n in dotenv]
+        import shutil as _sh
+        cli = _sh.which("claude")
+        if api_cred:
+            ok("runtime", f"lab-* runnable ({api_cred[0]})")
+        if cli:
+            ok("runtime", "lab-cc-* runnable (claude CLI subscription login)")
+        if not api_cred and not cli:
+            fail("runtime", "no credential for either family: need an "
+                            "ANTHROPIC_API_KEY/AUTH_TOKEN (lab-*) or the "
+                            "claude CLI (lab-cc-*)")
     ok("runtime", "uv + pandoc + rg present")
 
 
