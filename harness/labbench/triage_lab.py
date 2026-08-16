@@ -71,7 +71,7 @@ triage.cond_dir = lambda row: (DATA / "runs" / row["run_id"]
                                / row["task"] / row["arm"])
 
 
-def load_rows(path, run_id=None, arms=None):
+def load_rows(path, run_id=None, arms=None, model=None):
     rows = {}
     for line in Path(path).read_text().splitlines():
         try:
@@ -79,6 +79,8 @@ def load_rows(path, run_id=None, arms=None):
         except json.JSONDecodeError:
             continue
         if run_id and r.get("run_id") != run_id:
+            continue
+        if model and r.get("model") != model:
             continue
         if arms and r.get("arm") not in arms:
             continue
@@ -180,7 +182,10 @@ def check_harness_lab(rows, arms):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--results", type=Path, default=DATA / "results.jsonl")
-    ap.add_argument("--run-id", default=None)
+    ap.add_argument("--run-id", default=None,
+                    help="optional; a campaign gates by --model instead, "
+                         "because the driver's resume key ignores run ids")
+    ap.add_argument("--model", default=None)
     ap.add_argument("--arms", default=",".join(ARMS))
     ap.add_argument("--examples", type=int, default=3)
     ap.add_argument("--json", type=Path, default=None)
@@ -190,7 +195,8 @@ def main():
         print(f"no such results file: {args.results}")
         sys.exit(2)
     arms = [a for a in args.arms.split(",") if a]
-    rows = load_rows(args.results, run_id=args.run_id, arms=arms)
+    rows = load_rows(args.results, run_id=args.run_id, arms=arms,
+                     model=args.model)
     if not rows:
         print(f"no rows in {args.results}"
               f"{f' for run {args.run_id}' if args.run_id else ''}")

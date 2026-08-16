@@ -53,9 +53,15 @@ count_ok() {
   # Counts ok rows for THIS RUNG'S ARMS over the rung's frame prefix only —
   # swexplore's count_ok lesson: counting every arm/task in the file makes a
   # widened campaign print "rung complete" and run nothing.
-  python3 - "$DATA/results.jsonl" "$RUN_ID" "$ARMS_CSV" "$RUNG" "$DATA/frame.jsonl" <<'PY'
+  #
+  # Keyed (task, arm, MODEL) and NOT by run id, because that is the driver's
+  # own resume key: a cell paid for under an earlier run id (a smoke, an
+  # aborted campaign) is skipped by --resume, and a counter that filtered on
+  # run id would wait forever for a row the driver correctly refuses to
+  # re-buy. RUN_ID remains the layout/provenance label, not the identity.
+  python3 - "$DATA/results.jsonl" "$MODEL" "$ARMS_CSV" "$RUNG" "$DATA/frame.jsonl" <<'PY'
 import json, pathlib, sys
-res, run, arms, rung, frame = sys.argv[1:6]
+res, model, arms, rung, frame = sys.argv[1:6]
 arms = set(arms.split(","))
 tasks = set()
 for i, line in enumerate(pathlib.Path(frame).read_text().splitlines()):
@@ -70,7 +76,7 @@ if p.exists():
             r = json.loads(line)
         except json.JSONDecodeError:
             continue
-        if (r.get("run_id") == run and r.get("arm") in arms
+        if (r.get("model") == model and r.get("arm") in arms
                 and r.get("task") in tasks and r.get("status") == "ok"):
             seen.add((r["task"], r["arm"]))
 print(len(seen))
@@ -100,7 +106,10 @@ done
 
 echo
 echo "=== gate ==="
-python3 triage_lab.py --run-id "$RUN_ID" --arms "$ARMS_CSV" \
+# No --run-id filter, same reason as count_ok: cells paid under an earlier
+# run id are this campaign's data (the rows carry their own run_id, so
+# triage still finds every cell dir). --model keeps other campaigns out.
+python3 triage_lab.py --model "$MODEL" --arms "$ARMS_CSV" \
   --json "$DATA/$RUN_ID-gate.json"
 gate=$?
 echo
@@ -117,6 +126,10 @@ if [ "${ANALYZE:-0}" != "1" ]; then
   echo "RUNG $RUN_ID PASSED."
   exit 0
 fi
-python3 analyze_lab.py --run-id "$RUN_ID"
+case "$CONDITIONS" in
+  *lab-cc-*) FAMILY=cc ;;
+  *)         FAMILY=api ;;
+esac
+python3 analyze_lab.py --family "$FAMILY"
 echo
 echo "RUNG $RUN_ID PASSED."
