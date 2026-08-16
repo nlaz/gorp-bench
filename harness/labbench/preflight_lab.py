@@ -318,6 +318,31 @@ def check_arm_wiring():
     ok("arm-wiring", "3 arms; base untouched; treatments +1 tool; descs track")
 
 
+# ------------------------------------------------------------ auth probe
+
+def check_auth_probe(model="claude-sonnet-4-6"):
+    """One minimal API call through upstream's own venv and .env loading.
+
+    Opt-in (--probe-auth) because preflight is no-API-calls by default —
+    but a credential that the Messages API rejects (an expired key, or an
+    OAuth token scoped to something narrower than the API) otherwise
+    surfaces one 200-turn agent run into the smoke. Costs ~a token.
+    """
+    prog = (
+        "from harness.run import _load_env; _load_env()\n"
+        "import anthropic\n"
+        f"r = anthropic.Anthropic(max_retries=1).messages.create(\n"
+        f"    model={model!r}, max_tokens=1,\n"
+        "    messages=[{'role': 'user', 'content': 'ping'}])\n"
+        "print('auth-ok', r.usage.input_tokens)\n"
+    )
+    p = run(["uv", "run", "python", "-c", prog], cwd=UPSTREAM, timeout=120)
+    if p.returncode != 0:
+        tail = p.stderr.decode(errors="ignore").strip().splitlines()
+        return fail("auth-probe", tail[-1][-220:] if tail else "no stderr")
+    ok("auth-probe", f"credential accepted by the Messages API ({model})")
+
+
 # -------------------------------------------------------------- 7. runtime
 
 def check_runtime(skip_podman, skip_keys):
@@ -337,13 +362,19 @@ def check_runtime(skip_podman, skip_keys):
         else:
             ok("runtime", "podman up")
     if not skip_keys:
-        has = "ANTHROPIC_API_KEY" in os.environ or (
-            (UPSTREAM / ".env").exists()
-            and "ANTHROPIC_API_KEY" in (UPSTREAM / ".env").read_text())
-        if not has:
-            fail("runtime", "no ANTHROPIC_API_KEY in env or upstream/.env")
+        # Either credential shape works: the SDK sends ANTHROPIC_API_KEY as
+        # x-api-key and ANTHROPIC_AUTH_TOKEN as a Bearer header, and both
+        # upstream clients are constructed bare (`anthropic.Anthropic()`),
+        # so they inherit whichever the env provides.
+        names = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")
+        dotenv = ((UPSTREAM / ".env").read_text()
+                  if (UPSTREAM / ".env").exists() else "")
+        present = [n for n in names if n in os.environ or n in dotenv]
+        if not present:
+            fail("runtime", "no ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN "
+                            "in env or upstream/.env")
         else:
-            ok("runtime", "agent/judge key present")
+            ok("runtime", f"agent/judge credential present ({present[0]})")
     ok("runtime", "uv + pandoc + rg present")
 
 
@@ -353,6 +384,9 @@ def main():
     ap.add_argument("--skip-keys", action="store_true")
     ap.add_argument("--skip-corpus", action="store_true",
                     help="CI: no data/, skip corpus/shape/shim/wiring checks")
+    ap.add_argument("--probe-auth", action="store_true",
+                    help="one ~1-token API call to validate the credential "
+                         "(the only check here that spends anything)")
     args = ap.parse_args()
 
     print("labbench preflight:")
@@ -370,6 +404,8 @@ def main():
         check_shim()
     check_arm_wiring()  # needs the vendored tree, not the corpus
     check_runtime(args.skip_podman, args.skip_keys)
+    if args.probe_auth:
+        check_auth_probe()
     if FAILURES:
         print(f"\n{len(FAILURES)} failure(s) — do not spend")
         sys.exit(1)

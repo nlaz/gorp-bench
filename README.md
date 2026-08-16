@@ -42,7 +42,7 @@ published leaderboard** (different input modality; arm-vs-arm contrasts are
 unaffected). Three arms: `lab-base` (upstream verbatim), `lab-rg` (+ one
 structured ripgrep tool), `lab-gorp` (+ the same tool shape backed by gorp);
 the primary contrast is gorp − rg. Needs `uv`, `pandoc`, `podman`, and an
-`ANTHROPIC_API_KEY` in the vendored checkout's `.env`.
+`ANTHROPIC_API_KEY` or `ANTHROPIC_AUTH_TOKEN` in the vendored checkout's `.env`.
 
 ```sh
 bash harness/labbench/fetch.sh                    # vendor + venv + corpus
