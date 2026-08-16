@@ -205,3 +205,25 @@ def test_no_predictions_scores_zero():
     assert m["file_acc@5"] == 0
     assert m["func_acc@10_tol"] == 0
     assert m["file_recall@5"] == 0.0
+
+
+# ---------------------------------------------------------------------------
+# reading the tool's own stdout
+# ---------------------------------------------------------------------------
+
+
+def test_a_path_less_hit_row_is_recognised_in_both_gutters():
+    # gorp's no-path row was `264:<TAB>text` until 2026-08-16 and is
+    # `264:__text` after it. The logs on disk span the change, so both have to
+    # match: this regex failing is not an error, it is a quietly lower number
+    # on exactly the single-file scopes agents use most.
+    assert scoring._HIT_LINE_NOPATH.search("264:\tdef target(): pass")
+    assert scoring._HIT_LINE_NOPATH.search("264:  def target(): pass")
+    assert scoring._HIT_LINE_NOPATH.search("12:  x\n13:  y"), "any row, not just the first"
+
+
+def test_a_path_bearing_row_is_not_read_as_path_less():
+    # The two branches credit differently — a path-less row is credited to the
+    # scope, a path-bearing one to the path it prints — so the split matters.
+    for line in ["src/a.py:264:def target(): pass", "src/a.py:12-20", "  264:  indented"]:
+        assert not scoring._HIT_LINE_NOPATH.search(line), line

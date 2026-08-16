@@ -135,11 +135,17 @@ _VALUED_FLAGS = {"-k", "--top", "-C", "--context", "-A", "-B", "-M", "--max-colu
                  "--mode", "-e", "--regexp", "-f", "--file", "--max-depth"}
 _HIT_LINE = re.compile(r"(?m)^([^\s:][^:\n]*):\d+:")
 # The single-file form, where the tool omits the path because the caller
-# already named it: `264:\ttext`. Without this the scorer goes blind on
+# already named it: `264:  text`. Without this the scorer goes blind on
 # exactly the scope agents use most — see the docstring below.
-_HIT_LINE_NOPATH = re.compile(r"(?m)^\d+:\t")
+#
+# Both gutters, deliberately. gorp's was a tab until 2026-08-16 and is two
+# spaces after it, and the campaign logs on disk span the change: a scorer
+# that recognises only the current one silently re-scores every harvest taken
+# before it, and silently is the operative word — a missed hit line is not an
+# error here, it is a lower number.
+_HIT_LINE_NOPATH = re.compile(r"(?m)^\d+:(?:\t|  )")
 # The unit view's header (RESEARCH.md §34): ranked hits print the path once
-# as `path:START-END` and body rows as `N:\ttext`. A header is path-bearing
+# as `path:START-END` and body rows as `N:  text`. A header is path-bearing
 # exactly like _HIT_LINE; body rows happen to match _HIT_LINE_NOPATH, which
 # stays correct because that branch only fires when a scope is itself a gold
 # file — the one case where a path-less row's file is known by construction.
