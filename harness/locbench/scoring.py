@@ -128,7 +128,7 @@ def score_instance(answer_files, answer_functions, gold_files, gold_funcs, workt
 
 
 # Flags that consume the next argv token, so a scope is not confused with a
-# flag's value. Superset across rg and semgrep; a flag missing here can only
+# flag's value. Superset across rg and gorp; a flag missing here can only
 # cost a scope, never invent one.
 _VALUED_FLAGS = {"-k", "--top", "-C", "--context", "-A", "-B", "-M", "--max-columns",
                  "-g", "--glob", "--include", "-m", "--max-count", "-t", "--type",
@@ -173,11 +173,11 @@ def first_gold_hit_seq(shim_log_path, stdout_dir, gold_files):
     Two matchers, because one tool's output shape defeated the other.
 
     The tail match (`dir/base` anywhere in the text) tolerates the absolute
-    prefixes rg prints. It cannot see semgrep's output at all when the agent
-    scopes below the repo root: **semgrep prints paths relative to the scope it
+    prefixes rg prints. It cannot see gorp's output at all when the agent
+    scopes below the repo root: **gorp prints paths relative to the scope it
     was given, and rg prints them as passed.** `gorp q msal/` yields
     `application.py:162:…` where `rg q msal/` yields `msal/application.py:162:…`,
-    so a two-component tail matches ripgrep and misses semgrep — a systematic
+    so a two-component tail matches ripgrep and misses gorp — a systematic
     undercount of one arm only. On the §19.7 campaign it hid a gold hit in 13 of
     204 desc-v8 rows against 5 of 204 rg rows, including one where every one of
     the agent's four searches returned the gold file and the metric read `None`.

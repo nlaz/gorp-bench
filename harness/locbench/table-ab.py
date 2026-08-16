@@ -11,7 +11,7 @@ factorial:
     prose@512 (sg-plain)  vs  code@256  (sg-code)   -> both at once
 
 Reported on all shared instances and, separately, on the subset where every
-condition actually invoked semgrep — whether the agent searches at all is
+condition actually invoked gorp — whether the agent searches at all is
 decided before any result returns, so the table cannot influence it, and
 those runs only add driver variance.
 
@@ -27,9 +27,9 @@ from pathlib import Path
 DATA = Path(__file__).parent.parent / "data" / "locbench"
 SOURCES = ["results-ab.jsonl", "results-model.jsonl", "results.jsonl"]
 # rg/both come from the §7.1 pilot: same 50 instances, same driver model, but
-# the semgrep-side description there was v1 where the sg-* conditions use v4.
+# the gorp-side description there was v1 where the sg-* conditions use v4.
 # rg's own condition is identical across both, so it is a stable reference.
-LABELS = {"rg": "ripgrep (pilot)", "both": "rg+semgrep (pilot)",
+LABELS = {"rg": "ripgrep (pilot)", "both": "rg+gorp (pilot)",
           "sg-plain": "prose@512 (shipped)", "sg-p256": "prose@256", "sg-code": "code@256"}
 
 

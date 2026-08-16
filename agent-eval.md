@@ -1,6 +1,6 @@
 # Agent-task evals (protocol)
 
-Measures the actual product goal: does semgrep reduce the search round-trips an
+Measures the actual product goal: does gorp reduce the search round-trips an
 agent needs to locate code?
 
 ## Setup
@@ -10,10 +10,10 @@ agent needs to locate code?
   `paraphrase` queries — they are the ones grep struggles with).
 - Conditions (one search tool available per condition):
   1. `rg` only
-  2. `semgrep` keyword only (sanity: should ≈ rg)
-  3. `semgrep` full (hybrid default, indexed)
+  2. `gorp` keyword only (sanity: should ≈ rg)
+  3. `gorp` full (hybrid default, indexed)
 - Runner: `claude -p` headless with a restricted tool allowlist, e.g.
-  `--allowedTools "Bash(rg *)"` vs `--allowedTools "Bash(semgrep *)"`, plus
+  `--allowedTools "Bash(rg *)"` vs `--allowedTools "Bash(gorp *)"`, plus
   Read so the agent can verify candidates.
 
 ## Metrics per task

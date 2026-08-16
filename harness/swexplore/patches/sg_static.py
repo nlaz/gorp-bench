@@ -17,7 +17,7 @@ change gets published as a retrieval win. `SWEXPLORE_SG_SPAN=chunk` switches it
 for the sensitivity check, which is the honest way to show the bracket.
 
 Expect this to land in the classical-retrieval tier, well below the agentic
-explorers. That is not a semgrep result: the gold is what a multi-turn agent
+explorers. That is not a gorp result: the gold is what a multi-turn agent
 read across a whole session, and one top-5 query cannot substitute for a
 session. The value here is the *cross-language shape*, not the rank.
 """

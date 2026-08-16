@@ -82,7 +82,7 @@ def main():
     if args.out.exists():
         done = {json.loads(l)["gid"] for l in open(args.out) if l.strip()}
     out_f = open(args.out, "a")
-    tmp = tempfile.TemporaryDirectory(prefix="semgrep-floorcal-cache-")
+    tmp = tempfile.TemporaryDirectory(prefix="gorp-floorcal-cache-")
 
     n = 0
     for i, inst_id in enumerate(instances, 1):

@@ -11,7 +11,7 @@ published in arXiv 2606.07297 (HitReg 0.531 / HitFile 0.667 / CtxEff 0.829).
     cc-sg   + Bash(sg *)                    treatment
 
 Three contrasts: cc→cc-sg is the product question, cc-rg→cc-sg isolates
-semgrep from Bash, cc→cc-rg prices the Bash confound itself.
+gorp from Bash, cc→cc-rg prices the Bash confound itself.
 
 What this adds on top of their explorer, and nothing else:
 
@@ -377,7 +377,7 @@ class ArmExplorer(ClaudeCodeExplorer):
             "LOCBENCH_SHIM_LOG": str(cond_dir / "shim_log.jsonl"),
             "LOCBENCH_STDOUT_DIR": str(cond_dir / "searches"),
             # Sibling of runs/, not inside it. Under run_dir it created
-            # runs/<run>/semgrep-cache/<arm>/, which sits in the same namespace
+            # runs/<run>/gorp-cache/<arm>/, which sits in the same namespace
             # as the instance directories — so anything globbing
             # runs/<run>/*/ picks up a cache dir as if it were an instance.
             "GORP_CACHE_DIR": str(self.run_dir.parent.parent / "cache"
@@ -495,7 +495,7 @@ class ArmExplorer(ClaudeCodeExplorer):
             "user_prompt_sha256": _sha(prompt),
             "upstream_prompt_sha256": _sha(EXPLORE_PROMPT.format(issue=query, top_k=top_k)),
             "system_prompt_sha256": _sha(sysline) if sysline else None,
-            "semgrep_sha256": _binary_sha(),
+            "gorp_sha256": _binary_sha(),
             "index": index, "ts": time.strftime("%Y-%m-%dT%H:%M:%S"),
         }, indent=1) + "\n")
 

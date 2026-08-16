@@ -6,7 +6,7 @@ Usage:
 
 For each (condition, file) cell: first-search-hit rate, function Acc@10
 (tolerant), file Acc@5, %-of-first-queries-that-are-ranked, tool-choice
-split, ranked-vs-exact semgrep style, median cost/searches. Only instances
+split, ranked-vs-exact gorp style, median cost/searches. Only instances
 present in BOTH files (per condition) are compared, so deltas are paired.
 """
 
@@ -64,12 +64,12 @@ def stats(rs):
             )
         )
         # "search" is the same binary under the name-ablation alias.
-        if rows and rows[0]["tool"] in ("semgrep", "sg", "search") and "-e" not in rows[0]["argv"]:
+        if rows and rows[0]["tool"] in ("gorp", "sg", "search") and "-e" not in rows[0]["argv"]:
             ranked_first += 1
         for x in rows:
             if x["tool"] == "rg":
                 n_rg += 1
-            elif x["tool"] in ("semgrep", "sg", "search"):
+            elif x["tool"] in ("gorp", "sg", "search"):
                 n_sg += 1
                 if "-e" in x["argv"]:
                     sg_exact += 1

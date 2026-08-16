@@ -727,7 +727,7 @@ def run_agent(instance, condition, tree, run_dir, args):
         "model": args.model, "tool_line": tool_line_text,
         "tool_line_sha256": hashlib.sha256(tool_line_text.encode()).hexdigest()[:16],
         "allowed_tools": ALLOWED[condition], "budget_usd": args.budget_usd,
-        "semgrep_sha256": _sha(GORP),
+        "gorp_sha256": _sha(GORP),
         "semgrep_mtime": GORP.stat().st_mtime if GORP.exists() else None,
         "claude_version": CLAUDE_VERSION,
         "settings_sha256": _sha(Path.home() / ".claude" / "settings.json"),

@@ -97,7 +97,7 @@ def main():
         dump = os.environ.get("LOCBENCH_STDOUT_DUMP", "on") != "off"
         stdout_file.write_bytes(out if dump else b"")
         # Everything the agent was TOLD, not just how many bytes of it:
-        # semgrep's footers coach mode choice on stderr, which is a
+        # gorp's footers coach mode choice on stderr, which is a
         # treatment channel in an A/B (§16.9a A1). Only stderr_bytes
         # survived before, so the channel was unauditable after the fact.
         if err and dump:

@@ -99,7 +99,7 @@ def gid(row):
     return f"{row['run_id']}/{row['instance_id']}/{row['condition']}/{row['seq']}"
 
 
-def run_semgrep(tree, scope_rel, query, k, is_exact, mode, cache_dir,
+def run_gorp(tree, scope_rel, query, k, is_exact, mode, cache_dir,
                 search_flags=(), dump_features=False):
     path = tree if scope_rel in (None, ".") else tree / scope_rel
     cmd = [str(locbench.GORP), "--json", "-k", str(k)]
@@ -439,7 +439,7 @@ def main():
     # and destroyed once rather than once per arm.
     arm_flag_sets = [a.strip() for a in args.extra_search_flags.split(";")]
     scope_policies = args.scopes.split(",")
-    tmp = tempfile.TemporaryDirectory(prefix="semgrep-guessplay-cache-")
+    tmp = tempfile.TemporaryDirectory(prefix="gorp-guessplay-cache-")
     cache_dir = Path(tmp.name)
 
     out_f = open(args.out, "a")
@@ -505,7 +505,7 @@ def main():
                                    BIN_SHA, arm_flags)
                             if key in done:
                                 continue
-                            hits, err = run_semgrep(
+                            hits, err = run_gorp(
                                 tree, sc, query, args.k, is_exact, mode, cache_dir,
                                 search_flags=[*CONFIGS[config]["search"],
                                               *arm_flags.split()],

@@ -13,7 +13,7 @@ second copy here would drift from the one every prior section used.
 Three contrasts, always printed together, because two of them only mean
 something next to the third:
 
-    cc-sg − cc      PRIMARY. Does enabling semgrep help an agent that
+    cc-sg − cc      PRIMARY. Does enabling gorp help an agent that
                     already has Grep?
     cc-rg − cc      The Bash confound. `cc-sg` gains a shell as well as a
                     tool; this is what the shell alone is worth. The §27.1

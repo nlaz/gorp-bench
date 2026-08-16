@@ -37,10 +37,10 @@ ARMS = ("cc", "cc-rg", "cc-sg")
 ALL_LABEL = {
     "cc": "cc — built-in Grep only",
     "cc-rg": "cc-rg — Grep + ripgrep",
-    "cc-sg": "cc-sg — Grep + semgrep",
+    "cc-sg": "cc-sg — Grep + gorp",
     "sub-rg": "sub-rg — ripgrep only, no Grep",
-    "sub-sg": "sub-sg — semgrep only, no Grep",
-    "sub-sgb": "sub-sgb — semgrep + bridge expansion (§33)",
+    "sub-sg": "sub-sg — gorp only, no Grep",
+    "sub-sgb": "sub-sgb — gorp + bridge expansion (§33)",
 }
 ALL_TOOLS = {
     "cc": "Read, Glob, Grep",
@@ -54,9 +54,9 @@ ALL_ARM_TOOL = {"cc": None, "cc-rg": "rg", "cc-sg": "sg",
                 "sub-rg": "rg", "sub-sg": "sg", "sub-sgb": "sg"}
 ARM_LABEL = dict(ALL_LABEL)
 ARM_TOOL = {"cc-rg": "rg", "cc-sg": "sg"}
-CONTRASTS = (("cc-sg", "cc", "semgrep added vs Grep alone"),
+CONTRASTS = (("cc-sg", "cc", "gorp added vs Grep alone"),
              ("cc-rg", "cc", "ripgrep added vs Grep alone"),
-             ("cc-sg", "cc-rg", "semgrep vs ripgrep, Bash held"))
+             ("cc-sg", "cc-rg", "gorp vs ripgrep, Bash held"))
 # Plain-language gloss for every metric, so the page reads cold.
 GLOSS = {
     "hitRegion@5": "Of the code regions a successful fix actually read, what "
@@ -754,7 +754,7 @@ if __name__ == "__main__":
         # read the un-relabelled ALL_LABEL, so a page built with grep unblocked
         # still told the reader "no Grep" beside a tools column listing grep).
         ARM_LABEL["sub-rg"] = "sub-rg — ripgrep + shell grep (two lexical tools)"
-        ARM_LABEL["sub-sg"] = "sub-sg — semgrep + shell grep (semantic + lexical)"
+        ARM_LABEL["sub-sg"] = "sub-sg — gorp + shell grep (semantic + lexical)"
         ARM_LABEL["sub-sgb"] = ("sub-sgb — the same, plus bridge expansion "
                                 "(§33's one-flag treatment)")
         ALL_TOOLS["sub-rg"] = "Read, Glob, Bash(rg, grep)"

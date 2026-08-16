@@ -283,7 +283,7 @@ def check_shims():
     # the harness has: the arm's tool falls into shim.py's *blocked* path, exits
     # 2 with a steer on both streams, and produces a clean-looking catastrophic
     # result. Cheap to check, and it must be checked before money is spent.
-    for cond in sorted({*locbench.DESC_CONDITIONS, "rg", "semgrep", "search", "both"}):
+    for cond in sorted({*locbench.DESC_CONDITIONS, "rg", "gorp", "search", "both"}):
         tool = locbench.tool_of(cond)
         allowed = locbench.ALLOWED.get(cond) or []
         shimmed = tool in locbench.SHIMMED_SEARCH_TOOLS

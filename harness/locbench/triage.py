@@ -74,7 +74,7 @@ def gate(name, value, limit, worse="above", detail="", pct=False):
 
 # Every flag the CLI accepts, and which of them take a value. Classification
 # works from argv alone: the shim records `stderr_bytes` but deliberately not
-# the stderr text, because semgrep's footers coach mode choice and that is a
+# the stderr text, because gorp's footers coach mode choice and that is a
 # treatment channel in an A/B (§16.9a A1).
 VALUED_FLAGS = {"-k", "--top", "-C", "--context", "-A", "--after-context",
                 "-B", "--before-context", "-g", "--glob", "--include",
@@ -170,9 +170,13 @@ def cond_dir(row):
 
 
 def searches(row):
-    """This run's semgrep invocations, in order, from the shim log."""
+    """This run's ranked-engine invocations, in order, from the shim log.
+
+    Every name the engine has shipped under, because a replayed campaign's
+    logs carry the name that campaign typed.
+    """
     return [e for e in read_jsonl(cond_dir(row) / "shim_log.jsonl")
-            if not e.get("blocked") and e.get("tool") in ("semgrep", "sg", "search")]
+            if not e.get("blocked") and e.get("tool") in ("gorp", "semgrep", "sg", "search")]
 
 
 def traces(row):
@@ -221,7 +225,7 @@ def check_tool(rows, examples):
                 elif fw == 0:
                     no_files.append((r["instance_id"], inp.get("root", "")[-46:]))
 
-    print(f"  {n_search} semgrep invocations, {traced} engine traces")
+    print(f"  {n_search} engine invocations, {traced} engine traces")
     if usage:
         print(f"  ---   {len(usage)} usage errors (exit 2), by cause:")
         for k, v in kinds.most_common():
@@ -421,7 +425,7 @@ def main():
 
     summary = {}
     # Tool and distress checks only mean something for the arm that has the
-    # tool; an rg row has no semgrep invocations and would dilute every share.
+    # tool; an rg row has no ranked-engine invocations and would dilute every share.
     sg = [r for r in rows if r.get("condition") != "rg"]
     summary |= check_tool(sg, args.examples)
     summary |= check_distress(sg, args.examples)

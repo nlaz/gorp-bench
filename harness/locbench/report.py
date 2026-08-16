@@ -127,8 +127,8 @@ def main():
     by_cond = defaultdict(list)
     for r in rows:
         by_cond[r["condition"]].append(r)
-    conds = sorted(by_cond, key=lambda c: ["rg", "semgrep", "both"].index(c)
-                   if c in ("rg", "semgrep", "both") else 99)
+    conds = sorted(by_cond, key=lambda c: ["rg", "gorp", "both"].index(c)
+                   if c in ("rg", "gorp", "both") else 99)
 
     out = [f"# Loc-Bench localization results\n",
            f"{len(rows)} rows ({path}), models: "

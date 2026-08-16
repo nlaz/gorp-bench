@@ -132,7 +132,10 @@ def summary_row(r):
         "turns": a.get("num_turns"),
         "wall_s": (r.get("timing") or {}).get("harness_wall_s"),
         "n_searches": s.get("n_invocations"),
-        "n_semgrep": s.get("n_semgrep"),
+        # Every name the engine has shipped under, carried through separately
+        # rather than summed: a bundle is provenance, and which name an arm
+        # typed is part of what it recorded. The viewer adds them up.
+        **{f"n_{t}": s.get(f"n_{t}") for t in ("gorp", "semgrep", "sg", "search")},
         "n_rg": s.get("n_rg"),
         "n_blocked": s.get("n_blocked"),
         # Every metric, not a chosen few: which endpoint matters has changed
@@ -221,7 +224,7 @@ def searches_of(row, d):
     shim = read_jsonl(d / "shim_log.jsonl")
     traces = [t for t in read_jsonl(d / "trace.jsonl") if t.get("kind") == "search"]
     # The trace has no seq, so pair positionally against the non-blocked
-    # semgrep invocations, which is the order both are appended in. An
+    # engine invocations, which is the order both are appended in. An
     # exact-miss suggestion emits a second envelope, so consume by query.
     t_by_query = {}
     for t in traces:
@@ -301,7 +304,7 @@ def timeline_of(d, searches):
     `Glob`, and "searched, then opened *this* file" is most of the story about
     whether a search actually helped.
 
-    Engine facts are joined onto the semgrep calls in invocation order — the
+    Engine facts are joined onto the engine calls in invocation order — the
     shim log and the transcript record the same calls in the same sequence — so
     mode / files walked / chunks / hits land under the result they explain.
     """
@@ -315,7 +318,7 @@ def timeline_of(d, searches):
             if isinstance(c, dict) and c.get("type") == "tool_result":
                 results[c.get("tool_use_id")] = c
 
-    search_q = list(searches)          # consumed in order by semgrep/rg calls
+    search_q = list(searches)          # consumed in order by engine/rg calls
     out, dropped, unrecorded = [], 0, 0
     prev_ts = None
     for e in entries:
@@ -426,7 +429,7 @@ def provenance_of(d):
     except json.JSONDecodeError:
         return {}
     return {k: m.get(k) for k in
-            ("model", "semgrep_sha256", "claude_version", "dataset_sha256",
+            ("model", "gorp_sha256", "semgrep_sha256", "claude_version", "dataset_sha256",
              "tool_line_sha256", "tool_line", "budget_usd", "ts")}
 
 

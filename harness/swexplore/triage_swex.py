@@ -29,7 +29,7 @@ Five adaptations, each of which was a real defect if left alone:
    **vacuously** — the 0/0 failure mode §18 exists to end. Replaced with a real
    check: the LRU is actually bounded.
 5. **The arm split is `condition != "rg"`.** `cc-rg` is not literally `"rg"`, so
-   the ripgrep arm would be fed into the semgrep tool gate and dilute every
+   the ripgrep arm would be fed into the gorp tool gate and dilute every
    share it computes. Replaced with an explicit arm→tool map.
 """
 
@@ -106,7 +106,7 @@ def check_distress_swex(rows, examples):
 
     R1 tripped on exactly that: `php-cs-fixer-8064` ran one search,
     `sg "basic fix yield" tests/.../SimpleToComplexStringVariableFixerTest.php`,
-    against a file absent at that base commit. semgrep exited 2 with "no such
+    against a file absent at that base commit. gorp exited 2 with "no such
     file or directory". One correct rejection, and the instance counted as
     "every search empty".
 
@@ -278,7 +278,7 @@ def main():
     print(f"triage: {len(rows)} rows from {len(paths)} file(s), run {args.run_id} "
           f"({', '.join(f'{k}={v}' for k, v in conds.most_common())})")
 
-    # (5) only the arm that actually has semgrep is fed the tool/distress gates.
+    # (5) only the arm that actually has gorp is fed the tool/distress gates.
     sg = [r for r in rows if r["condition"] in SG_ARMS]
     summary = {}
     if sg:
@@ -286,7 +286,7 @@ def main():
         summary |= check_distress_swex(sg, args.examples)
         summary |= triage.check_cache(sg)
     else:
-        print("\n[1-3/4] skipped: no semgrep arm in these results")
+        print("\n[1-3/4] skipped: no gorp arm in these results")
     summary |= check_harness_swex(rows)
     summary |= report_invocation(rows)
 

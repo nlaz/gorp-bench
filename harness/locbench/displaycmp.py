@@ -32,7 +32,7 @@ sys.path.insert(0, str(HERE))
 from ab_analyze import boot_ci  # noqa: E402  — one bootstrap, one convention
 
 DATA = HERE.parent / "data" / "locbench"
-SEARCH_TOOLS = ("rg", "semgrep", "sg", "search")
+SEARCH_TOOLS = ("rg", "gorp", "sg", "search")
 
 # What a truncated tool result looks like from the agent's side. §25.1 tripwire
 # 6: at 20x the bytes the treatment can backfire by having its own lower-ranked
@@ -181,7 +181,7 @@ def main():
     if args.frame:
         frame = set(json.loads(args.frame.read_text())["instances"])
     data = collect(args.runs,
-                   lambda c: locbench.ARM_TOOL.get(c, "rg" if c == "rg" else "semgrep"),
+                   lambda c: locbench.ARM_TOOL.get(c, "rg" if c == "rg" else "gorp"),
                    frame if not args.baseline_only else None)
 
     if args.baseline_only:

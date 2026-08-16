@@ -367,7 +367,7 @@ function renderHeadline() {
 
 /* ---------- gate comparison ---------- */
 const CRITERIA = [
-  { key: 'n_search', label: 'semgrep invocations', kind: 'count' },
+  { key: 'n_search', label: 'engine invocations', kind: 'count' },
   { key: 'traced', label: 'engine traces', kind: 'traced' },
   { key: 'empty_ranked', label: 'ranked searches returning nothing',
     kind: 'share', of: 'traced', needsTrace: true, good: v => v <= 0.02 },
@@ -497,6 +497,10 @@ const PAGE = 100;
 function renderTable() {
   const metric = $('#metric').value, q = $('#q').value.trim().toLowerCase();
   const denied = $('#denied').value;
+  /* Every name the engine has shipped under. A campaign's rows are keyed by
+     the name that campaign typed, so a viewer that knew only the current one
+     would report zero searches for every run recorded before the rename. */
+  const ENGINE_KEYS = ['n_gorp', 'n_semgrep', 'n_sg', 'n_search', 'n_rg'];
   const tier = $('#tier').value, outcome = $('#outcome').value;
   const activity = $('#activity').value;
   let rows = PAIRS.filter(p => {
@@ -505,9 +509,11 @@ function renderTable() {
        without searching cannot separate the arms — 75 of 640 here — which is
        §11.5's point about most instances carrying no engine signal, and the
        reason a reviewer wants to exclude them before reading anything into a
-       win or a loss. Counts rg and semgrep only; Read and Glob do not qualify. */
+       win or a loss. Counts rg and the engine only; Read and Glob do not qualify.
+       ENGINE_KEYS spans every name the engine has shipped under, because a
+       campaign's rows are keyed by the name that campaign typed. */
     if (activity !== 'all') {
-      const c = a => ((p.arms[a] || {}).n_semgrep || 0) + ((p.arms[a] || {}).n_rg || 0);
+      const c = a => ENGINE_KEYS.reduce((t, k) => t + ((p.arms[a] || {})[k] || 0), 0);
       const searched = ARMS.filter(a => p.arms[a] && c(a) > 0).length;
       const present = ARMS.filter(a => p.arms[a]).length;
       if (activity === 'any' && searched === 0) return false;
@@ -520,7 +526,7 @@ function renderTable() {
        searches with it. */
     if (denied !== 'all') {
       const nd = sum(p, 'n_denied');
-      const c = a => ((p.arms[a] || {}).n_semgrep || 0) + ((p.arms[a] || {}).n_rg || 0);
+      const c = a => ENGINE_KEYS.reduce((t, k) => t + ((p.arms[a] || {})[k] || 0), 0);
       /* `lost` is per-arm, not per-task: the case worth seeing is one arm
          refused into running no searches at all while the other worked
          normally — Zulko__moviepy-2253, where rg chained `rg …; git log …`
@@ -803,7 +809,7 @@ function markGold(text, gold) {
     if (!g) return;
     out = out.replace(new RegExp(esc(g), 'g'), m => `<span class="goldmark">${m}</span>`);
   });
-  // semgrep prints paths relative to the scope it was given, so a gold file
+  // gorp prints paths relative to the scope it was given, so a gold file
   // reached as `gorp q msal/` appears as `application.py:162:` and the full
   // path above never matches. Mark the bare basename too — but only where it
   // leads a result line, never mid-text, or every mention of a common filename
@@ -921,7 +927,7 @@ def build(bundle, out_path):
         f'<b>{html.escape(str(v)[:22])}</b></span>'
         for k, v, opt in (
             ("model", prov.get("model"), False),
-            ("semgrep", (prov.get("semgrep_sha256") or "")[:12], False),
+            ("gorp", (prov.get("gorp_sha256") or prov.get("semgrep_sha256") or "")[:12], False),
             ("claude", prov.get("claude_version"), True),
             ("dataset", (prov.get("dataset_sha256") or "")[:12], True),
             ("captured", bundle.get("generated_at", "")[:16], True),
@@ -931,7 +937,7 @@ def build(bundle, out_path):
     doc = f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>semgrep loc-bench — results and trajectories</title>
+<title>gorp loc-bench — results and trajectories</title>
 <style>{CSS}</style></head>
 <body>
 <header>
@@ -981,7 +987,7 @@ def build(bundle, out_path):
           <option value="lost">an arm lost all its searches</option></select>
         <select id="activity" aria-label="search activity">
           <option value="all">searched or not</option>
-          <option value="any">called rg or semgrep</option>
+          <option value="any">called rg or the engine</option>
           <option value="both">called it in both arms</option>
           <option value="none">never called it</option></select>
         <span class="count" id="count"></span>

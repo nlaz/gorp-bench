@@ -10,7 +10,7 @@
 #
 # The arms are parameters rather than literals so a second A/B does not need
 # a forked copy of this loop. The §19 description A/B (desc-v7 vs desc-v5)
-# is paired *within* semgrep, so it wants its own output file and no rg arm:
+# is paired *within* gorp, so it wants its own output file and no rg arm:
 #
 #   OUT=../data/locbench/results-desc-v7.jsonl \
 #   CONDITIONS=desc-v5,desc-v7 LIMIT=200 eval/locbench/campaign.sh

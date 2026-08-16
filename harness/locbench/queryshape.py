@@ -126,7 +126,7 @@ def main():
             return 1
     queries = defaultdict(list)
     for r in rows:
-        # Ranked semgrep only: `rg` has no ranked mode, so including it would
+        # Ranked gorp only: `rg` has no ranked mode, so including it would
         # compare a query language against a regex dialect.
         if r.get("tool") == "rg" or r.get("mode") != "ranked":
             continue
@@ -135,7 +135,7 @@ def main():
 
     by_cond = {c: s for c, v in queries.items() if (s := summarize(v))}
     if not by_cond:
-        print("no ranked semgrep searches found under", args.runs)
+        print("no ranked gorp searches found under", args.runs)
         return 1
     print_table(by_cond)
 
