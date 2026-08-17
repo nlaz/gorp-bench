@@ -40,6 +40,19 @@ command -v uv >/dev/null || { echo "uv not on PATH"; exit 4; }
 # The frame must reproduce from its seed before a rung spends anything on it.
 python3 lab_frame.py --check >/dev/null || { echo "frame does not reproduce"; exit 4; }
 
+# Reap sandboxes orphaned by a killed run BEFORE spending: a SIGKILLed cell
+# never reaches sandbox.stop(), and by definition no container is legitimate
+# while no campaign is running. Measured in cc1/R1: two containers from
+# externally-killed cells sat "Up 6 hours" and failed the triage gate after
+# the whole rung had been paid for.
+if command -v podman >/dev/null; then
+  LEFT=$(podman ps -aq --filter name=lab-sandbox-)
+  if [ -n "$LEFT" ]; then
+    echo "reaping $(wc -w <<<"$LEFT" | tr -d ' ') orphaned lab-sandbox container(s)"
+    podman rm -f $LEFT >/dev/null
+  fi
+fi
+
 # The money gate: full preflight, nothing skipped. This is the harness whose
 # one rule is that every gate runs before the expensive thing.
 python3 preflight_lab.py || { echo "preflight failed — do not spend"; exit 4; }
