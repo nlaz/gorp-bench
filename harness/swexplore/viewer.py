@@ -54,7 +54,9 @@ ALL_TOOLS = {
     "sub-sgb": "Read, Glob, Bash(sg --bridge-expand 8)",
 }
 ALL_ARM_TOOL = {"cc": None, "cc-rg": "rg", "cc-sg": "sg",
-                "sub-rg": "rg", "sub-sg": "sg", "sub-sgb": "sg"}
+                "sub-rg": "rg", "sub-sg": "sg", "sub-sgb": "sg",
+                # §36: the shipped tool, under the name the plugin ships it as.
+                "cc-gorp": "gorp"}
 ARM_LABEL = dict(ALL_LABEL)
 ARM_TOOL = {"cc-rg": "rg", "cc-sg": "sg"}
 CONTRASTS = (("cc-sg", "cc", "gorp added vs Grep alone"),
@@ -119,7 +121,9 @@ def searches_of(run_id, iid, arm):
             e = json.loads(line)
         except json.JSONDecodeError:
             continue
-        if e.get("blocked") or e.get("tool") not in ("rg", "sg"):
+        # Every name the engine has shipped under; a new alias goes here
+        # too (CLAUDE.md keeps this list in four places).
+        if e.get("blocked") or e.get("tool") not in ("rg", "sg", "gorp"):
             continue
         body = ""
         f = d / "searches" / (e.get("stdout_file") or "")

@@ -27,7 +27,14 @@ import time
 from pathlib import Path
 
 HERE = Path(__file__).parent
-GORP = HERE.parent / "target/release/gorp"
+# The engine is a sibling checkout; `common` is the one module that resolves
+# it. This file used to say `HERE.parent / "target/release/gorp"`, which was
+# right while bench/ lived inside the engine tree and points at a
+# non-existent gorp-bench/target/ ever since the split.
+sys.path.insert(0, str(HERE.parent / "harness"))
+from common import gorp_repo as common  # noqa: E402
+
+GORP = common.BIN
 
 # Keyword competitors, invoked by absolute path (dev shells wrap `grep`).
 # The greps get -E so all tools speak extended regex (BRE chokes on `+`).

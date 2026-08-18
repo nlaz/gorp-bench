@@ -55,13 +55,19 @@ triage.DATA = DATA
 # Which binary each arm was told to type. `cc` has no Bash tool at all.
 # cc*: additive (native Grep present). sub-*: substitutive (Grep removed).
 ALL_ARM_TOOL = {"cc": None, "cc-rg": "rg", "cc-sg": "sg",
-                "sub-rg": "rg", "sub-sg": "sg", "sub-sgb": "sg"}
+                "sub-rg": "rg", "sub-sg": "sg", "sub-sgb": "sg",
+                # §36: the shipped tool, under the name the plugin ships it as.
+                "cc-gorp": "gorp"}
 # Set per invocation from --arms. A rung must gate exactly the arms it ran:
 # the harness-health gates compare against the REGISTERED set, so leaving this
 # as every known arm would fail "registered arms absent" on any partial run,
 # and leaving it as one rung's set fails "unexpected arm labels" on the next.
 ARM_TOOL = dict(ALL_ARM_TOOL)
 SG_ARMS = []
+# The engine under every name it has shipped under (CLAUDE.md keeps this list
+# in four places; this is swexplore's). `rg` is deliberately absent — it is the
+# control, and folding it in here dilutes every share these gates compute.
+ENGINE_NAMES = ("sg", "gorp", "semgrep", "search")
 
 # The LRU's own ceiling, so the replacement disk gate has something to check
 # against rather than a number invented here.
@@ -228,11 +234,11 @@ def report_invocation(rows):
         # 98% → 7%; if agents collapse onto exact match, the variant dies and
         # the result is reported as §16.10 replicating. Reported per rung so
         # the collapse is visible at the 120-gate, before the 848 is funded.
-        if tool == "sg":
+        if tool in ENGINE_NAMES:
             exact = ranked = 0
             for r in rs:
                 for e in _shim_entries(r):
-                    if e.get("tool") != "sg" or e.get("blocked"):
+                    if e.get("tool") not in ENGINE_NAMES or e.get("blocked"):
                         continue
                     if "-e" in e["argv"] or "--exact" in e["argv"]:
                         exact += 1
@@ -265,7 +271,11 @@ def main():
     if unknown:
         sys.exit(f"unknown arm(s): {unknown}; known: {sorted(ALL_ARM_TOOL)}")
     ARM_TOOL = {a: ALL_ARM_TOOL[a] for a in want}
-    SG_ARMS = [a for a, t in ARM_TOOL.items() if t == "sg"]
+    # Every name the engine has shipped under, not the literal "sg".
+    # A cc-gorp rung keyed on "sg" put ZERO arms in SG_ARMS, so gates
+    # 1-3 — tool health, empty-ranked, distress — skipped entirely and
+    # the run passed without the §16.10 check ever running.
+    SG_ARMS = [a for a, t in ARM_TOOL.items() if t in ENGINE_NAMES]
 
     # Read only this rung's arm files, so a results directory holding several
     # arm sets under one run id does not leak foreign arms into the gates.

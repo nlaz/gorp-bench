@@ -7,7 +7,9 @@ the layout and how to run a campaign. The engine's own research log
 ## The one rule
 
 **A campaign costs real money and hours. Every gate runs before the expensive
-thing, never after.** `preflight.py` before a run, `triage.py` between tiers.
+thing, never after.** `preflight.py` before a run, `triage.py` between tiers —
+and for swexplore, `preflight_swex.py` and `provaudit.py`, which is the same
+pair for that harness.
 This is not caution for its own sake: the §16.10 campaign spent $361 and 1,115
 runs measuring a tool whose searches returned nothing 47% of the time, and
 nothing in the harness noticed. Every check in `preflight.py` and `triage.py`
@@ -32,7 +34,21 @@ exists because something went wrong that no unit test could see.
   Arms are *additive* (Grep/Glob stay; the treatment adds a tool).
   `patches/*` run from inside the vendored checkout, so they resolve paths
   from `data/swexplore/upstream/explorers/` — they deliberately do not import
-  `harness/common`, which is not on their path.
+  `harness/common`, which is not on their path. That independence is also the
+  hazard: `BENCH_ROOT` is a hand-counted `parents[N]`, and the repo split
+  moved the bench one level, so it silently resolved above the repo and made
+  `SHIM` a path that does not exist. Every search in every arm would have
+  failed while still producing rows. `sg_arms` now raises at import if the
+  shim is missing, and `preflight_swex.py` checks all five cross-repo paths.
+  Gates: `preflight_swex.py` before spend (adapted from locbench's
+  `preflight.py`), `triage_swex.py` for harness health, `provaudit.py` for
+  whether the rung was *one* experiment — one binary, one resolved model, one
+  description across every cell. **Record the resolution, never the alias:**
+  `meta.json` carries `model_requested` and `model_resolved` separately
+  because §27–§33 recorded only `"sonnet"` and all in fact ran
+  `claude-sonnet-5`, which put a wrong calibration into RESEARCH.md §32.3.
+  An arm name goes in **six** registries here; `preflight_swex.py` and
+  `tests/test_swexplore_arms.py` both assert they agree.
 - `harness/locbench/` — Loc-Bench V1. Ours, and *isolating* (one search tool,
   everything else blocked, including `git` — history after `base_commit`
   contains the real fix). `run.py` is the driver, `harvest.py` mines shim logs

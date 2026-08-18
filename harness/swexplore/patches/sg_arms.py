@@ -33,6 +33,8 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import platform
+import re
 import shlex
 import shutil
 import subprocess
@@ -147,6 +149,19 @@ SG_LINE_V11 = (
     "Ranked, not exhaustive — if the answer isn't there, rephrase."
 )
 
+# v12 (§36): SG_LINE_V11 with ONE variable changed — the tool's name, after
+# the semgrep/sg -> gorp rename. It is derived from v11 by substitution rather
+# than retyped, so "nothing else moved" is true by construction instead of by
+# careful proofreading; tests/test_swexplore_arms.py asserts the round trip.
+# This is the description the plugin actually ships (gorp's README, "Point
+# your agent at it"), which is the point: the shipped wording stays a measured
+# one. §19.9 is the cautionary case — desc-v9 changed the name AND a clause
+# and could attribute neither.
+#
+# The rename is token-exact. A blind str.replace("sg", "gorp") would also hit
+# the "sg" inside other words; \b anchors it to the whole token.
+SG_LINE_V12 = re.sub(r"\bsg\b", "gorp", SG_LINE_V11)
+
 SG_DESC = os.environ.get("SWEXPLORE_SG_DESC", "v9")
 _SG_LINE = {"v9": SG_LINE, "v10": SG_LINE_V10, "v11": SG_LINE_V11}[SG_DESC]
 
@@ -160,8 +175,26 @@ ARMS = {
     # index — plus engine flags the agent never sees (bridge expansion). The
     # arm IS the flag delta; everything else must match sub-sg exactly.
     "sub-sgb": ("Read,Glob,Bash",     ["Bash(sg *)"], _SG_LINE),
+    # §36: the shipped product, measured. Additive like the other cc-* arms
+    # (native Grep stays), tool named `gorp` as the plugin names it, and the
+    # description is v12 — v11 renamed. Its contrast is cc-gorp − cc: does
+    # enabling gorp help an agent that still has Grep? Deliberately NOT
+    # SWEXPLORE_SG_DESC-switchable: cc-sg's description is an env variable
+    # because §28 owed cells under an older line, but cc-gorp is registered on
+    # one description and pinning it here is what makes the arm name mean
+    # something.
+    "cc-gorp": ("Read,Glob,Grep,Bash", ["Bash(gorp *)"], SG_LINE_V12),
 }
-ARM_TOOL = {"cc-rg": "rg", "cc-sg": "sg", "sub-rg": "rg", "sub-sg": "sg", "sub-sgb": "sg"}
+ARM_TOOL = {"cc-rg": "rg", "cc-sg": "sg", "sub-rg": "rg", "sub-sg": "sg",
+            "sub-sgb": "sg", "cc-gorp": "gorp"}
+
+# Every search-tool name the shims cover, in one place. These names appeared as
+# four separate literals (the shim list, the two env-scrub loops and the
+# blocked-name tuple) and adding `sub-sgb` to one registry at a time cost three
+# consecutive fix commits (42c192a, d2e2b90, 27f3c08). A name missing from the
+# shim list is the dangerous one: it reaches the real binary on PATH and
+# escapes the harness entirely.
+SEARCH_TOOLS = ("rg", "sg", "gorp")
 
 # --------------------------------------------------------------------------
 # Engine flags for the sg arm (§30)
@@ -222,6 +255,8 @@ ARM_CLAUSE = {
     "sub-rg": "Use Glob, Read, and the `rg` command (via Bash) to explore the codebase.",
     "sub-sg": "Use Glob, Read, and the `sg` command (via Bash) to explore the codebase.",
     "sub-sgb": "Use Glob, Read, and the `sg` command (via Bash) to explore the codebase.",
+    # Keeps Grep, like the other cc-* clauses: cc-gorp is additive.
+    "cc-gorp": "Use Glob, Grep, Read, and the `gorp` command (via Bash) to explore the codebase.",
 }
 
 
@@ -239,10 +274,21 @@ def _amend(prompt: str, arm: str) -> str:
 HERE = Path(__file__).resolve().parent
 # This file does not run from where it is checked in: fetch.sh copies it into
 # data/swexplore/upstream/explorers/, so paths resolve from *there*.
-#   data/swexplore/upstream/explorers -> bench repo root
-BENCH_ROOT = HERE.parents[4]
+#   <bench>/data/swexplore/upstream/explorers
+#      [0]=upstream [1]=swexplore [2]=data [3]=<bench repo root>
+# This said parents[4] and was right while the bench lived at gorp/eval/, one
+# level deeper. After the split it resolved to Flower-Computer/, which made
+# SHIM a path that does not exist — so every shim wrapper would have exec'd a
+# missing file and every single search would have failed. An arm whose tool
+# always errors still produces rows, still costs money, and reads as a clean
+# null: §16.10 exactly. Hence the assertion rather than a comment.
+BENCH_ROOT = HERE.parents[3]
 LOCBENCH = BENCH_ROOT / "harness" / "locbench"
 SHIM = BENCH_ROOT / "harness" / "common" / "shim.py"
+if not SHIM.exists():
+    raise RuntimeError(
+        f"sg_arms: shim not found at {SHIM} (BENCH_ROOT={BENCH_ROOT}). "
+        f"Every search would fail silently; refusing to run.")
 # The engine is a sibling checkout, not part of this repo. Deliberately not
 # imported from harness/common: this file runs from inside the vendored
 # upstream, where that package is not on the path.
@@ -265,7 +311,24 @@ RG_BIN = os.environ.get("RG_BIN", "/opt/homebrew/bin/rg")
 #   * `--stats` / `--stats-json` — those write to stderr, which shim.py
 #     replays to the agent, so they are agent-visible by construction and are
 #     never used here at any level.
+#
+# Three levels, not two (§36). `lean` drops the transcript, and the transcript
+# is the only place the agent's trajectory survives — so a powered run that
+# still wants its trajectories read by hand had to pay for `full`, which also
+# dumps every search's stdout to its own file. That dump is the one artifact
+# with a cost the agent can feel: shim.py writes it BEFORE replaying the bytes,
+# so it sits in the latency of every single search.
+#
+#   full   stdout dumps + transcripts    ladder rungs; everything readable
+#   trace  transcripts only              powered runs; trajectories kept,
+#                                        nothing added to search latency
+#   lean   neither                       when only the endpoints matter
+#
+# None of the three changes a byte the agent sees, which is what lets rungs at
+# different levels pool.
 PROV = os.environ.get("SWEXPLORE_PROV", "full")
+if PROV not in ("full", "trace", "lean"):
+    raise RuntimeError(f"SWEXPLORE_PROV={PROV!r}; expected full|trace|lean")
 
 
 def _index_matches(meta_path: Path, flags: list[str]) -> bool:
@@ -289,6 +352,143 @@ def _index_matches(meta_path: Path, flags: list[str]) -> bool:
 
 def _sha(text: str) -> str:
     return hashlib.sha256(text.encode()).hexdigest()
+
+
+# --------------------------------------------------------------------------
+# Provenance (§36)
+# --------------------------------------------------------------------------
+# Everything below is written AFTER the bytes have been replayed to the agent,
+# or before the agent starts at all — never in its path. That is the same
+# invariant PROV documents above, and it is what lets a lean rung pool with a
+# full one. None of it touches the shim, the block messages, GORP_NO_HINTS or
+# stderr.
+#
+# The gap this closes: meta.json recorded `"model": "sonnet"`, the alias, and
+# never what the alias resolved to. Every campaign s27..s33 in fact ran
+# claude-sonnet-5, which is only discoverable by reading a transcript — and
+# RESEARCH.md §32.3 calibrated our `cc` arm against the paper's Sonnet-4.5 row
+# on the assumption it had not. An alias is not a record.
+
+_CLAUDE_VERSION: str | None = None
+_GORP_VERSION: dict | None = None
+
+
+def _run_ok(argv: list[str]) -> str:
+    try:
+        p = subprocess.run(argv, capture_output=True, text=True, timeout=30)
+        return p.stdout.strip() if p.returncode == 0 else ""
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+def _claude_version() -> str:
+    """`claude --version`, once per process. locbench has always recorded this
+    (run.py:740); swexplore never did, so a CLI upgrade mid-campaign was
+    invisible."""
+    global _CLAUDE_VERSION
+    if _CLAUDE_VERSION is None:
+        _CLAUDE_VERSION = _run_ok(["claude", "--version"]).splitlines()[:1]
+        _CLAUDE_VERSION = _CLAUDE_VERSION[0] if _CLAUDE_VERSION else ""
+    return _CLAUDE_VERSION
+
+
+def _gorp_version() -> dict:
+    """The binary's own identity block: commit, dirty, profile, embed dim,
+    compat key.
+
+    The engine's git SHA reaches disk today only inside trace.jsonl, which
+    exists only for gorp arms — so the `cc` control records nothing at all
+    about the engine it is a control for, and a rebuild between arms would
+    leave no trace anywhere. A sha256 says two binaries differ; this says how.
+    """
+    global _GORP_VERSION
+    if _GORP_VERSION is None:
+        out, meta = _run_ok([str(GORP_BIN), "--version"]), {}
+        for line in out.splitlines():
+            if ":" in line:
+                k, _, v = line.partition(":")
+                meta[k.strip().replace(" ", "_")] = v.strip()
+            elif line.strip():
+                meta["version"] = line.strip()
+        # `commit: db4ef4a (dirty)` -> the flag is worth its own field, because
+        # "dirty" means the binary does not correspond to any commit at all.
+        c = meta.get("commit", "")
+        meta["git_dirty"] = c.endswith("(dirty)")
+        meta["commit"] = c.replace("(dirty)", "").strip()
+        _GORP_VERSION = meta
+    return _GORP_VERSION
+
+
+def _git_head(repo: Path) -> dict:
+    sha = _run_ok(["git", "-C", str(repo), "rev-parse", "HEAD"])
+    dirty = _run_ok(["git", "-C", str(repo), "status", "--porcelain"])
+    return {"sha": sha[:12], "dirty": bool(dirty.strip())}
+
+
+# Which description each arm carries. cc/cc-rg have none. cc-gorp is pinned to
+# v12 at registration; the sg arms follow SWEXPLORE_SG_DESC, which is exactly
+# the variable that was previously unrecorded — inferable only by matching
+# system_prompt_sha256 against a string you already had to guess.
+def _desc_version(arm: str) -> str | None:
+    if arm == "cc-gorp":
+        return "v12"
+    return SG_DESC if ARM_TOOL.get(arm) in ("sg", "gorp") else None
+
+
+_RUN_PROV_DONE = False
+
+
+def _write_run_provenance(run_dir: Path) -> None:
+    """One runs/<run_id>/provenance.json, written before the first cell.
+
+    Per-cell meta.json answers "what ran here"; this answers "what was this
+    machine, on this day, for this whole campaign" — the vendored upstream's
+    exact state included, which no cell can see. Written once per process and
+    only if absent, so a resumed rung does not overwrite the record of the
+    pass that paid for most of it.
+    """
+    global _RUN_PROV_DONE
+    if _RUN_PROV_DONE:
+        return
+    _RUN_PROV_DONE = True
+    out = run_dir / "provenance.json"
+    if out.exists():
+        return
+    up = HERE.parents[0]                       # data/swexplore/upstream
+    data = up.parent                           # data/swexplore
+    frame = data / "ladder-frame.json"
+    try:
+        frame_sha = json.loads(frame.read_text()).get("sha256") if frame.exists() else None
+    except Exception:  # noqa: BLE001
+        frame_sha = None
+    rec = {
+        "run_id": run_dir.name,
+        "started": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "host": platform.node(),
+        "platform": platform.platform(),
+        "provenance_level": PROV,
+        "claude_version": _claude_version(),
+        "gorp_bin": str(GORP_BIN),
+        "gorp_sha256": _binary_sha(),
+        "gorp_version": _gorp_version(),
+        "gorp_repo": {"path": str(GORP_REPO), **_git_head(GORP_REPO)},
+        # The vendored harness is a measurement input too: a dirty overlay is
+        # an unregistered treatment, and fetch.sh's own delta is the baseline
+        # to compare against.
+        "upstream": {
+            "sha": _run_ok(["git", "-C", str(up), "rev-parse", "HEAD"])[:12],
+            "delta": sorted(
+                l for l in _run_ok(
+                    ["git", "-C", str(up), "status", "--porcelain"]).splitlines() if l),
+        },
+        "ladder_frame_sha256": frame_sha,
+        "env": {k: os.environ.get(k) for k in (
+            "SWEXPLORE_SG_DESC", "SWEXPLORE_SG_FLAGS", "SWEXPLORE_SG_INDEX_FLAGS",
+            "SWEXPLORE_SGB_EXTRA", "SWEXPLORE_UNBLOCK_GREP", "SWEXPLORE_CACHE_GB",
+            "SWEXPLORE_ROLLING", "SWEXPLORE_PROV")},
+    }
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(rec, indent=1) + "\n")
 
 
 _BIN_SHA: str | None = None
@@ -367,7 +567,7 @@ class ArmExplorer(ClaudeCodeExplorer):
         fix, and `git log --all --grep=<issue>` is ground truth.
         """
         bin_dir.mkdir(parents=True, exist_ok=True)
-        for tool in ("rg", "sg", "grep", "egrep", "fgrep", "git"):
+        for tool in (*SEARCH_TOOLS, "grep", "egrep", "fgrep", "git"):
             w = bin_dir / tool
             w.write_text(
                 f'#!/bin/sh\nexec /usr/bin/env python3 "{SHIM}" {tool} "$@"\n'
@@ -396,20 +596,24 @@ class ArmExplorer(ClaudeCodeExplorer):
         # Only this arm's own tool gets a real binding; the other falls into
         # shim.py's blocked path, so an arm escaping its treatment is visible
         # as a blocked row rather than silently succeeding.
-        for t in ("rg", "sg"):
+        for t in SEARCH_TOOLS:
             env.pop(f"LOCBENCH_REAL_{t.upper()}", None)
             env.pop(f"LOCBENCH_{t.upper()}_FLAGS", None)
         tool = ARM_TOOL.get(self.arm)
         if tool == "rg":
             env["LOCBENCH_REAL_RG"] = RG_BIN
-        elif tool == "sg":
-            env["LOCBENCH_REAL_SG"] = str(GORP_BIN)
+        elif tool in ("sg", "gorp"):
+            # One binary, two names. `sg` and `gorp` are the same engine under
+            # the name its arm was registered with; recorded arms keep the
+            # name they were measured under (CLAUDE.md), so both bindings
+            # exist and point at the same GORP_BIN.
+            env[f"LOCBENCH_REAL_{tool.upper()}"] = str(GORP_BIN)
             flags = SG_SEARCH_FLAGS
             if self.arm == "sub-sgb":
                 extra = os.environ.get("SWEXPLORE_SGB_EXTRA", "--bridge-expand 8")
                 flags = f"{flags} {extra}".strip()
             if flags:
-                env["LOCBENCH_SG_FLAGS"] = flags
+                env[f"LOCBENCH_{tool.upper()}_FLAGS"] = flags
         if UNBLOCK_GREP:
             for g in ("grep", "egrep", "fgrep"):
                 env[f"LOCBENCH_REAL_{g.upper()}"] = f"/usr/bin/{g}"
@@ -418,8 +622,8 @@ class ArmExplorer(ClaudeCodeExplorer):
         # otherwise and reads it as "no matches" (run.py:514-531).
         steer = (f"use the {tool} command instead" if tool
                  else "use the Grep and Glob tools instead")
-        blocked_names = ("rg", "sg") if UNBLOCK_GREP else \
-            ("grep", "egrep", "fgrep", "rg", "sg")
+        blocked_names = SEARCH_TOOLS if UNBLOCK_GREP else \
+            ("grep", "egrep", "fgrep", *SEARCH_TOOLS)
         for t in blocked_names:
             env[f"LOCBENCH_BLOCKMSG_{t.upper()}"] = (
                 f"{t}: unavailable in this environment — {steer}")
@@ -460,6 +664,7 @@ class ArmExplorer(ClaudeCodeExplorer):
         from .parsing import parse_relevant_files
 
         cond_dir = self._cond_dir(instance_id)
+        _write_run_provenance(self.run_dir)
         tools, allowed, sysline = ARMS[self.arm]
         prompt = _amend(EXPLORE_PROMPT.format(issue=query, top_k=top_k), self.arm)
         index = self._ensure_index()
@@ -503,6 +708,23 @@ class ArmExplorer(ClaudeCodeExplorer):
             "upstream_prompt_sha256": _sha(EXPLORE_PROMPT.format(issue=query, top_k=top_k)),
             "system_prompt_sha256": _sha(sysline) if sysline else None,
             "gorp_sha256": _binary_sha(),
+            # The toolchain actually under the cell. `model` stays as the
+            # alias that was requested; model_resolved is filled in after the
+            # run from the transcript's system/init line, because only the CLI
+            # knows what an alias means on the day it ran.
+            "model_requested": self.model,
+            "model_resolved": None,
+            "claude_version": _claude_version(),
+            "gorp_bin": str(GORP_BIN),
+            "gorp_version": _gorp_version(),
+            "gorp_repo": _git_head(GORP_REPO),
+            # The treatment variables. Every one of these was previously
+            # unrecorded, so two cells differing in description or in hidden
+            # engine flags were indistinguishable on disk.
+            "desc_version": _desc_version(self.arm),
+            "sg_search_flags": SG_SEARCH_FLAGS,
+            "sg_index_flags": SG_INDEX_FLAGS,
+            "unblock_grep": UNBLOCK_GREP,
             "index": index, "ts": time.strftime("%Y-%m-%dT%H:%M:%S"),
         }, indent=1) + "\n")
 
@@ -526,6 +748,7 @@ class ArmExplorer(ClaudeCodeExplorer):
 
         result_text, agent = "", {"status": status, "harness_wall_s": wall}
         bash_calls = grep_calls = 0
+        model_resolved = None
         for line in transcript.read_text(errors="ignore").splitlines():
             try:
                 ev = json.loads(line)
@@ -535,6 +758,10 @@ class ArmExplorer(ClaudeCodeExplorer):
             # bare string — the same shape that crashed displaychmp.walk()
             # (§25.3). Guard both, or a single such event kills the arm after
             # the money has already been spent.
+            # The CLI announces what the alias resolved to, once, in its init
+            # event. This is the only place the truth appears.
+            if ev.get("type") == "system" and ev.get("subtype") == "init":
+                model_resolved = ev.get("model")
             msg = ev.get("message")
             content = msg.get("content") if isinstance(msg, dict) else None
             for block in (content if isinstance(content, list) else []):
@@ -555,6 +782,18 @@ class ArmExplorer(ClaudeCodeExplorer):
                 if ev.get("is_error") and agent["status"] == "ok":
                     agent["status"] = "agent_error"
 
+        # meta.json is written before the run so a crash still leaves one;
+        # the resolved model can only be known after. Patch the field rather
+        # than rewriting the file from scratch, so nothing else can drift.
+        meta_path = cond_dir / "meta.json"
+        try:
+            meta = json.loads(meta_path.read_text())
+            meta["model_resolved"] = model_resolved
+            meta_path.write_text(json.dumps(meta, indent=1) + "\n")
+        except Exception:  # noqa: BLE001
+            pass   # provenance must never be able to fail a paid cell
+        agent["model_resolved"] = model_resolved
+
         shim = self._read_shim_log(cond_dir)
         agent.update(bash_calls=bash_calls, grep_calls=grep_calls, **shim)
         agent.update(instance_id=instance_id, arm=self.arm, index=index)
@@ -567,7 +806,7 @@ class ArmExplorer(ClaudeCodeExplorer):
         # a crash still leaves everything up to that point, and the cost fields
         # above are parsed out of it. Under `lean` it is discarded once parsed,
         # which is why the endpoint survives losing the file.
-        if PROV != "full":
+        if PROV == "lean":
             transcript.unlink(missing_ok=True)
 
         return parse_relevant_files(result_text, instance_id, top_k=top_k)
@@ -586,8 +825,12 @@ class ArmExplorer(ClaudeCodeExplorer):
         return {
             "n_invocations": len(live),
             "n_blocked": sum(1 for r in rows if r.get("blocked")),
+            # SEARCH_TOOLS, not a literal ("rg", "sg"): this was the fifth
+            # copy of that tuple, and the one with no loud failure mode — a
+            # cc-gorp cell ran six gorp searches and reported n_gorp absent,
+            # so every invocation-rate downstream read zero.
             "n_by_tool": {t: sum(1 for r in live if r.get("tool") == t)
-                          for t in ("rg", "sg")},
+                          for t in SEARCH_TOOLS},
             "total_stdout_bytes": sum(r.get("stdout_bytes") or 0 for r in live),
             "total_search_ms": round(sum(r.get("wall_ms") or 0 for r in live), 1),
             "n_nonzero_exit": sum(1 for r in live if r.get("exit")),

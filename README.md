@@ -88,21 +88,41 @@ cd ../gorp-bench && python3 -m pytest tests -q
 
 ## Running a campaign
 
-Preflight first — always. It is five checks against the shapes agents
-actually type, and it exists because the §16.10 campaign spent $361 with 47%
-of one arm's searches silently returning nothing.
+Preflight first — always. It exists because the §16.10 campaign spent $361
+with 47% of one arm's searches silently returning nothing. `locbench` has had
+its own since then; swexplore got `preflight_swex.py` only in §36, after the
+repo split had left four cross-repo paths pointing at directories that no
+longer exist — including the shim path, which would have made *every* search
+in *every* arm fail while still producing rows that read as a clean null.
 
 ```sh
-python3 harness/locbench/preflight.py                    # before spending anything
-RUNG=150 harness/swexplore/campaign.sh                   # a rung, with provenance
-python3 harness/swexplore/triage_swex.py --run s27       # the gate between tiers
-python3 harness/swexplore/analyze.py                     # the endpoints
-python3 harness/swexplore/viewer.py                      # one offline HTML page
+python3 harness/swexplore/preflight_swex.py              # before spending anything
+MODEL=claude-sonnet-4-5-20250929 RUNG=150 \
+  CONDITIONS="cc cc-gorp" harness/swexplore/campaign.sh  # a rung; both gates run inside
+python3 harness/swexplore/triage_swex.py --run-id s36    # harness health
+python3 harness/swexplore/provaudit.py --run-id s36      # one toolchain, one treatment
+python3 harness/swexplore/analyze.py --run-id s36        # the endpoints
+python3 harness/swexplore/viewer.py --run-id s36         # one offline HTML page
 ```
+
+`campaign.sh` runs `preflight_swex.py` itself before spending and both gates
+after, so the line above is the whole flow; the individual commands are for
+re-reading a rung that already ran.
+
+**The model is pinned, never an alias.** `campaign.sh` refuses a bare `sonnet`
+/ `opus` / `haiku`. Campaigns §27–§33 all passed `sonnet` and all in fact ran
+`claude-sonnet-5` — recoverable only by reading a raw transcript, and §32.3
+calibrated the `cc` arm against the paper's *Sonnet-4.5* row on the assumption
+they had not. `meta.json` now records `model_requested` and `model_resolved`
+as two separate facts, and `provaudit.py` fails a run whose cells disagree.
 
 `triage` is a gate, not a report: it exits nonzero on tool failures, agent
 distress, or harness trouble, and a campaign that fails it does not get
-analyzed. `viewer.py` renders the numbers *and* the trajectories behind them
+analyzed. `provaudit` is the second gate and asks a different question — was
+this rung *one* experiment? It fails on any mixture within a run: two resolved
+models, two binaries, two descriptions, two sets of hidden engine flags. A
+rung that half-ran on a rebuilt binary is two experiments pooled into one
+number, and nothing used to look. `viewer.py` renders the numbers *and* the trajectories behind them
 — every search an agent ran, what came back, and what the engine did — into a
 single self-contained page that opens offline.
 
@@ -126,7 +146,8 @@ the repo that reads them cannot disagree about what a tier means.
 
 ## What the arm names mean
 
-`cc`, `cc-rg`, `cc-sg`, `desc-v4` … `desc-v12`, `semgrep`, `sg`, `search` —
+`cc`, `cc-rg`, `cc-sg`, `cc-gorp`, `desc-v4` … `desc-v12`, `semgrep`, `sg`,
+`search` —
 these are **frozen experiment labels, not the tool's current name.** The
 engine has been `gorp` since 2026-08; every arm keeps the name it was
 measured under, because a campaign compares against recorded runs and an arm
@@ -135,5 +156,21 @@ whose text changed is a different arm. The rename entered the eval as
 contrast isolates one variable. RESEARCH.md §19.9 in gorp is the cautionary
 case — `desc-v9` changed the name *and* a clause, and could attribute neither.
 
+`cc-gorp` (§36) is the shipped product measured as it ships: additive like
+`cc-sg` — native Grep stays — with the tool named `gorp` and carrying
+swexplore's `SG_LINE_V12`, which is `SG_LINE_V11` put through a token-exact
+`sg` → `gorp` rename and nothing else. It is *derived* by substitution rather
+than retyped, and `tests/test_swexplore_arms.py` asserts the round trip, so
+"one variable changed" is mechanically true rather than carefully proofread.
+Its contrast is `cc-gorp − cc`: does enabling gorp help an agent that still
+has Grep? Note it does not pool with the §27–§33 ledger — those ran
+`claude-sonnet-5`, and §36 pins `claude-sonnet-4-5-20250929` to make the
+comparison against the paper's Sonnet-4.5 row like-for-like for the first time.
+
 For the same reason, harvested shim logs say `semgrep` where the agent typed
 `semgrep`. Every parser here accepts each name the engine has shipped under.
+Adding a name means adding it in six places for swexplore — `sg_arms.ARMS`
+and `ARM_TOOL`, the eval_runner patch's `SG_ARMS` and `METHOD_MAP`, and
+`ALL_ARM_TOOL` in `triage_swex.py`, `analyze.py` and `viewer.py` — which is
+why `preflight_swex.py` and a test both check that they agree. Registering
+`sub-sgb` one registry at a time cost three consecutive fix commits.

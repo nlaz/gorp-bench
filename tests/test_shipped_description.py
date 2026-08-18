@@ -34,7 +34,10 @@ ROOT = common.REPO
 # The arm README ships. One name, so a future desc arm needs one edit here.
 SHIPPED = "desc-v12"
 
-HEADING = "### The tool description to give your agent"
+# The heading moved when gorp's docs were distilled (db4ef4a); the prose
+# under it did not change. The join this test guards is the description
+# text, not the heading, so tracking the rename is the correct fix.
+HEADING = "## Point your agent at it"
 # Present in the scored arm because the harness blocks every other tool; not
 # part of what semgrep recommends to a reader, so the README may omit it.
 HARNESS_ONLY = " Read and Glob are also available."

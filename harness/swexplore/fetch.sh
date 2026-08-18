@@ -39,7 +39,13 @@ git -C "$OUT/upstream" checkout -q "$UPSTREAM_SHA"
 git -C "$OUT/upstream" checkout -q -- .          # drop any prior patch
 cp patches/_sg_repos.py "$OUT/upstream/_sg_repos.py"
 cp patches/sg_arms.py patches/sg_static.py "$OUT/upstream/explorers/"
-git -C "$OUT/upstream" apply ../../../swexplore/patches/0001-eval_runner-arms-cost-rolling.patch
+# `git -C` runs the apply from inside the vendored tree, so a relative patch
+# path resolves from THERE. It used to read ../../../swexplore/patches/,
+# which was right while this repo was gorp/eval/ and has pointed at a
+# non-existent gorp-bench/swexplore/ ever since the split — so re-vendoring
+# has been broken, silently, for anyone who did not already have the
+# overlay on disk. An absolute path cannot drift with the layout again.
+git -C "$OUT/upstream" apply "$(cd patches && pwd)/0001-eval_runner-arms-cost-rolling.patch"
 python3 -m py_compile "$OUT/upstream/eval_runner.py" "$OUT/upstream/explorers/sg_arms.py" \
                       "$OUT/upstream/explorers/sg_static.py" "$OUT/upstream/_sg_repos.py"
 echo "harness ready: upstream@${UPSTREAM_SHA:0:7} + 3 files + 1 patch (eval.py untouched)"

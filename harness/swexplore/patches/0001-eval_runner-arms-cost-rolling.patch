@@ -20,7 +20,7 @@ index c65cb4d..5e804ad 100644
 +# than forking the runner means --resume, --workers and --top-k all apply
 +# unchanged. SG_DATA is where fetch.sh put bench.jsonl and sidecar.jsonl.
 +# cc*: additive (native Grep present). sub-*: substitutive (Grep removed).
-+SG_ARMS = {"cc", "cc-rg", "cc-sg", "sub-rg", "sub-sg", "sub-sgb"}
++SG_ARMS = {"cc", "cc-rg", "cc-sg", "sub-rg", "sub-sg", "sub-sgb", "cc-gorp"}
 +SG_STATIC = {"sg_static"}
 +SG_DATA = Path(os.environ.get("SWEXPLORE_DATA", Path(__file__).resolve().parent.parent))
 +SG_ROLLING = os.environ.get("SWEXPLORE_ROLLING", "1") == "1"
@@ -162,7 +162,7 @@ index c65cb4d..5e804ad 100644
      def cursor_method(rec: dict) -> list[tuple[str, int, int]] | None:
          from explorers.cursor_agent import CursorAgentExplorer
          return _agentic_method(
-@@ -583,6 +677,15 @@ def run(
+@@ -583,6 +677,17 @@ def run(
          "swerank": swerank_method,
          "claude_code": claude_code_method,
          "cursor": cursor_method,
@@ -174,6 +174,8 @@ index c65cb4d..5e804ad 100644
 +        "sub-rg": lambda rec: _sg_arm_method(rec, "sub-rg"),
 +        "sub-sg": lambda rec: _sg_arm_method(rec, "sub-sg"),
 +        "sub-sgb": lambda rec: _sg_arm_method(rec, "sub-sgb"),
++        # §36 — additive, tool named `gorp`, description v12
++        "cc-gorp": lambda rec: _sg_arm_method(rec, "cc-gorp"),
 +        "sg_static": sg_static_method,
          "autocr": autocr_method,
          "cosil": cosil_method,
