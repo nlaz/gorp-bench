@@ -184,7 +184,17 @@ def check_arm_wiring(m, arms):
         tools, allowed, sysline = m.ARMS[arm]
         tool = m.ARM_TOOL.get(arm)
         if tool is None:
-            if allowed or sysline:
+            # Two kinds of engine-less arm. The pristine control (cc) must
+            # carry nothing — it is the calibration anchor against the
+            # published row. A grep-open shell control (§37.2 cc-bash) may
+            # allowlist shell grep and nothing else, and still carries no
+            # description: its purity IS the decomposition it exists for.
+            if arm in getattr(m, "GREP_OPEN_ARMS", ()):
+                if sysline:
+                    fails.append(f"{arm}: shell control carries a description line")
+                if [a for a in allowed if not a.startswith("Bash(grep")]:
+                    fails.append(f"{arm}: shell control allowlists more than grep")
+            elif allowed or sysline:
                 fails.append(f"{arm}: control arm carries an allowlist or a tool line")
             continue
         if tool not in m.SEARCH_TOOLS:

@@ -1,5 +1,5 @@
 diff --git a/eval_runner.py b/eval_runner.py
-index c65cb4d..cc9537c 100644
+index c65cb4d..8b05c4e 100644
 --- a/eval_runner.py
 +++ b/eval_runner.py
 @@ -9,6 +9,7 @@ Usage:
@@ -21,7 +21,7 @@ index c65cb4d..cc9537c 100644
 +# unchanged. SG_DATA is where fetch.sh put bench.jsonl and sidecar.jsonl.
 +# cc*: additive (native Grep present). sub-*: substitutive (Grep removed).
 +SG_ARMS = {"cc", "cc-rg", "cc-sg", "sub-rg", "sub-sg", "sub-sgb", "cc-gorp",
-+           "cc-gorp-route"}
++           "cc-gorp-route", "cc-bash"}
 +SG_STATIC = {"sg_static"}
 +SG_DATA = Path(os.environ.get("SWEXPLORE_DATA", Path(__file__).resolve().parent.parent))
 +SG_ROLLING = os.environ.get("SWEXPLORE_ROLLING", "1") == "1"
@@ -163,7 +163,7 @@ index c65cb4d..cc9537c 100644
      def cursor_method(rec: dict) -> list[tuple[str, int, int]] | None:
          from explorers.cursor_agent import CursorAgentExplorer
          return _agentic_method(
-@@ -583,6 +678,19 @@ def run(
+@@ -583,6 +678,21 @@ def run(
          "swerank": swerank_method,
          "claude_code": claude_code_method,
          "cursor": cursor_method,
@@ -179,11 +179,13 @@ index c65cb4d..cc9537c 100644
 +        "cc-gorp": lambda rec: _sg_arm_method(rec, "cc-gorp"),
 +        # §37 — routed-product candidate: v13 description, shell grep open
 +        "cc-gorp-route": lambda rec: _sg_arm_method(rec, "cc-gorp-route"),
++        # §37.2 — the Bash-toll control: cc plus a shell, nothing else
++        "cc-bash": lambda rec: _sg_arm_method(rec, "cc-bash"),
 +        "sg_static": sg_static_method,
          "autocr": autocr_method,
          "cosil": cosil_method,
          "locagent": locagent_method,
-@@ -690,6 +798,15 @@ def run(
+@@ -690,6 +800,15 @@ def run(
                      "metrics": scores_per_k[k],
                      "num_regions": min(len(preds), k),
                  }

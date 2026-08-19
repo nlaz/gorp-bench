@@ -278,6 +278,15 @@ ARMS = {
     #      sent 380 lexical grep intents into ranked search instead.
     "cc-gorp-route": ("Read,Glob,Grep,Bash",
                       ["Bash(gorp *)", "Bash(grep *)"], SG_LINE_V14),
+    # §37.2: the Bash-toll control. s37 measured cc-gorp-route at +$0.044 vs
+    # cc with a clean regression on Bash search round-trips ($0.031/call,
+    # intercept -$0.019) — but cc has no Bash AT ALL, so that contrast
+    # bundles "has a shell" with "has gorp". This arm is cc plus Bash plus
+    # open shell grep and NOTHING else: no engine, no description. Its
+    # clause parallels cc-rg's shape so shell grep gets the same billing
+    # the route arm gives it. cc-bash − cc prices the shell; cc-gorp-route
+    # − cc-bash is gorp + v14 net of the shell.
+    "cc-bash": ("Read,Glob,Grep,Bash", ["Bash(grep *)"], ""),
 }
 ARM_TOOL = {"cc-rg": "rg", "cc-sg": "sg", "sub-rg": "rg", "sub-sg": "sg",
             "sub-sgb": "sg", "cc-gorp": "gorp", "cc-gorp-route": "gorp"}
@@ -323,7 +332,7 @@ UNBLOCK_GREP = os.environ.get("SWEXPLORE_UNBLOCK_GREP", "") == "1"
 # frozen arms; cc-gorp-route is registered WITH grep open, so gating it on an
 # env var would make the arm's identity depend on the shell it was launched
 # from. Grep stays shimmed either way — pass-through, but logged.
-GREP_OPEN_ARMS = frozenset({"cc-gorp-route"})
+GREP_OPEN_ARMS = frozenset({"cc-gorp-route", "cc-bash"})
 
 # --------------------------------------------------------------------------
 # The one clause of upstream's prompt we rewrite, and why
@@ -360,6 +369,9 @@ ARM_CLAUSE = {
     "cc-gorp": "Use Glob, Grep, Read, and the `gorp` command (via Bash) to explore the codebase.",
     # §37: names both shell commands, because both are open in this arm.
     "cc-gorp-route": "Use Glob, Grep, Read, and the `gorp` and `grep` commands (via Bash) to explore the codebase.",
+    # §37.2: cc-rg's clause shape with grep in the rg slot, so the shell
+    # search gets equal billing across the arms being contrasted.
+    "cc-bash": "Use Glob, Grep, Read, and the `grep` command (via Bash) to explore the codebase.",
 }
 
 
@@ -734,6 +746,8 @@ class ArmExplorer(ClaudeCodeExplorer):
             steer = f"use the {tool} command or grep instead"
         elif tool:
             steer = f"use the {tool} command instead"
+        elif grep_open:
+            steer = "use grep or the Grep tool instead"
         else:
             steer = "use the Grep and Glob tools instead"
         blocked_names = SEARCH_TOOLS if grep_open else \

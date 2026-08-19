@@ -241,4 +241,21 @@ def test_frozen_arms_are_not_grep_open():
     measured with shell grep blocked, and an arm's environment is part of its
     recorded identity."""
     m = sg_arms()
-    assert m.GREP_OPEN_ARMS == frozenset({"cc-gorp-route"})
+    assert m.GREP_OPEN_ARMS == frozenset({"cc-gorp-route", "cc-bash"})
+
+
+# ------------------------------------------------------------ §37.2: cc-bash
+@needs_vendor
+def test_cc_bash_is_the_shell_and_nothing_else():
+    """The Bash-toll control decomposes route − cc. Its whole point is purity:
+    a shell and open grep, with no engine and no description. Any sysline or
+    gorp binding here and the decomposition is void."""
+    m = sg_arms()
+    tools, allowed, sysline = m.ARMS["cc-bash"]
+    assert "Bash" in tools and "Grep" in tools
+    assert allowed == ["Bash(grep *)"]
+    assert sysline == ""                       # no description at all
+    assert m.ARM_TOOL.get("cc-bash") is None   # no engine
+    assert "cc-bash" in m.GREP_OPEN_ARMS
+    assert "`grep`" in m.ARM_CLAUSE["cc-bash"]
+    assert "gorp" not in m.ARM_CLAUSE["cc-bash"]
