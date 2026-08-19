@@ -23,6 +23,7 @@ import argparse
 import collections
 import html
 import json
+import re
 import statistics as st
 import sys
 from pathlib import Path
@@ -83,7 +84,13 @@ ENDPOINTS = [("hit_region_rate", "hitRegion@5"), ("hit_file_rate", "hitFile@5"),
              ("context_efficiency", "ctxEff"), ("ndcg_at_500", "nDCG@500"),
              ("recall_at_100", "recall@100"), ("precision", "precision"),
              ("total_cost_usd", "cost $"), ("num_turns", "turns")]
-MAX_OUT = 2600          # chars of a single search's output kept in the bundle
+# How much of each captured output reaches the page. These were tuned when
+# every output was rendered clipped and unopenable, so they were sized to what
+# could be *read at a glance* — which silently made the rest unrecoverable.
+# Now that outputs expand, they are sized to what is worth *keeping*, and
+# --max-* raises them further. Whatever is dropped is counted and shown in the
+# page, because a silent cap reads as "that was the whole output".
+MAX_OUT = 20000         # chars of a single search's output kept in the bundle
 MAX_ISSUE = 4000
 
 
@@ -109,12 +116,52 @@ def load(run_id):
     return by, side, gold
 
 
+def _bash_results(d):
+    """Each Bash call's command and what it returned, in order, from the
+    transcript.
+
+    The shim writes every search's stdout to searches/NNN.out, but only under
+    PROV=full — `trace` and `lean` leave those files zero-byte, and a panel
+    headed "what came back" that renders an empty pre says `(no output)` about
+    a search that returned 3 KB. The transcript carries the same bytes, as the
+    tool_result the agent was handed, so the page recovers them from there and
+    the reader sees the search output at every provenance level.
+    """
+    tf = d / "transcript.jsonl"
+    if not tf.is_file():
+        return []
+    calls, pending, order = {}, {}, []
+    for line in tf.read_text(errors="replace").splitlines():
+        try:
+            ev = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        msg = ev.get("message")
+        content = msg.get("content") if isinstance(msg, dict) else None
+        for blk in (content if isinstance(content, list) else []):
+            if not isinstance(blk, dict):
+                continue
+            if blk.get("type") == "tool_use" and blk.get("name") == "Bash":
+                cmd = (blk.get("input") or {}).get("command") if isinstance(
+                    blk.get("input"), dict) else None
+                if cmd:
+                    pending[blk.get("id")] = cmd
+                    order.append(blk.get("id"))
+            elif blk.get("type") == "tool_result":
+                tid = blk.get("tool_use_id")
+                if tid in pending:
+                    c = blk.get("content")
+                    calls[tid] = c if isinstance(c, str) else json.dumps(c)
+    return [(pending[i], calls.get(i, "")) for i in order]
+
+
 def searches_of(run_id, iid, arm):
     """Every non-blocked invocation with the bytes the agent actually saw."""
     d = DATA / "runs" / run_id / iid / arm
     log = d / "shim_log.jsonl"
     if not log.exists():
         return []
+    fallback, fb_i = None, 0
     out = []
     for line in log.read_text(errors="replace").splitlines():
         try:
@@ -125,20 +172,38 @@ def searches_of(run_id, iid, arm):
         # too (CLAUDE.md keeps this list in four places).
         if e.get("blocked") or e.get("tool") not in ("rg", "sg", "gorp"):
             continue
-        body = ""
+        body, full, src = "", 0, "dump"
         f = d / "searches" / (e.get("stdout_file") or "")
         if f.is_file():
-            body = f.read_text(errors="replace")[:MAX_OUT]
+            raw = f.read_text(errors="replace")
+            full, body = len(raw), raw[:MAX_OUT]
+        if not body and (e.get("stdout_bytes") or 0) > 0:
+            # The dump was switched off, but the bytes reached the agent.
+            # Walk the transcript's Bash calls in order and take the next one
+            # that names this tool; the shim log and the transcript record the
+            # same sequence of calls.
+            if fallback is None:
+                fallback = _bash_results(d)
+            tool = e.get("tool") or ""
+            while fb_i < len(fallback):
+                cmd, res = fallback[fb_i]
+                fb_i += 1
+                if re.search(rf"(?:^|[|;&\s]){re.escape(tool)}\s", cmd):
+                    full, body, src = len(res), res[:MAX_OUT], "transcript"
+                    break
         out.append({"argv": e.get("argv") or [], "exit": e.get("exit"),
                     "bytes": e.get("stdout_bytes") or 0,
-                    "ms": e.get("wall_ms"), "out": body})
+                    "ms": e.get("wall_ms"), "out": body,
+                    # What the agent actually saw, so the page can say how
+                    # much of it the bundle is carrying.
+                    "n": full, "src": src})
     return out
 
 
-MAX_STEP_TEXT = 700
-MAX_TOOL_IN = 260
-MAX_TOOL_OUT = 420
-MAX_STEPS = 60
+MAX_STEP_TEXT = 2500
+MAX_TOOL_IN = 600
+MAX_TOOL_OUT = 6000
+MAX_STEPS = 140
 
 
 def timeline_of(run_id, iid, arm):
@@ -172,7 +237,8 @@ def timeline_of(run_id, iid, arm):
                 continue
             t = blk.get("type")
             if t == "text" and (blk.get("text") or "").strip():
-                steps.append({"k": "say", "v": blk["text"].strip()[:MAX_STEP_TEXT]})
+                say = blk["text"].strip()
+                steps.append({"k": "say", "v": say[:MAX_STEP_TEXT], "n": len(say)})
             elif t == "tool_use":
                 inp = blk.get("input") or {}
                 if isinstance(inp, dict):
@@ -185,15 +251,23 @@ def timeline_of(run_id, iid, arm):
                 else:
                     brief = str(inp)
                 steps.append({"k": "tool", "name": blk.get("name") or "?",
-                              "v": brief[:MAX_TOOL_IN], "id": blk.get("id")})
+                              "v": brief[:MAX_TOOL_IN], "vn": len(brief),
+                              "id": blk.get("id")})
                 pending[blk.get("id")] = len(steps) - 1
             elif t == "tool_result":
                 c = blk.get("content")
                 txt = c if isinstance(c, str) else json.dumps(c)
                 ix = pending.get(blk.get("tool_use_id"))
                 if ix is not None:
-                    steps[ix]["out"] = (txt or "")[:MAX_TOOL_OUT]
-    return steps[:MAX_STEPS]
+                    txt = txt or ""
+                    steps[ix]["out"] = txt[:MAX_TOOL_OUT]
+                    steps[ix]["n"] = len(txt)
+    kept = steps[:MAX_STEPS]
+    if len(steps) > MAX_STEPS:
+        # Never end a trajectory without saying it was cut. A trajectory that
+        # stops at step 140 with no marker reads as an agent that stopped.
+        kept.append({"k": "cut", "v": len(steps) - MAX_STEPS})
+    return kept
 
 
 def region_hits(pred, core):
@@ -451,7 +525,32 @@ button{cursor:pointer}
 .arm h4{margin:0 0 8px;font-size:12.5px;font-family:var(--mono);color:var(--accent)}
 pre{background:var(--code);border:1px solid var(--rule);border-radius:7px;
   padding:9px 11px;overflow-x:auto;font:11.5px/1.55 var(--mono);margin:5px 0 0;
-  white-space:pre;max-height:250px}
+  white-space:pre}
+/* Collapsed by default so a card stays scannable; the toggle is what makes
+   the rest reachable. Height lives on the wrapper, not on the pre, so the
+   pre keeps its own horizontal scrolling. */
+.clip{position:relative;--clip-h:190px}
+/* The collapsed height is a custom property, not a competing selector. A
+   variant rule like `.clip.step-out .cbody{max-height:76px}` ties with
+   `.clip.open .cbody` on specificity and wins on order, so the toggle flipped
+   its own label and changed nothing — caught in the browser, not in review.
+   Setting the variable on the variant keeps `.open` winning by specificity
+   whatever order the rules land in. */
+.clip .cbody{max-height:var(--clip-h);overflow:hidden;
+  -webkit-mask-image:linear-gradient(#000 62%,transparent);
+  mask-image:linear-gradient(#000 62%,transparent)}
+.clip.open .cbody{max-height:none;overflow:visible;
+  -webkit-mask-image:none;mask-image:none}
+.ctog{display:inline-flex;align-items:center;gap:5px;margin-top:5px;padding:2px 9px;
+  font:10.5px/1.7 var(--mono);letter-spacing:.04em;text-transform:uppercase;
+  color:var(--accent);background:var(--accent-soft);border:1px solid transparent;
+  border-radius:99px;cursor:pointer}
+.ctog:hover{border-color:var(--accent)}
+.ctog:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* Say plainly what the bundle did not keep, rather than letting a cap read
+   as the end of the output. */
+.cnote{margin-left:8px;font:10.5px/1.7 var(--mono);color:var(--ink3)}
+.cut{margin:9px 0 2px;font:11px/1.6 var(--mono);color:var(--bad)}
 .q{font-family:var(--mono);font-size:12px;background:var(--accent-soft);
   color:var(--accent);padding:4px 8px;border-radius:6px;display:inline-block;
   margin-top:9px;word-break:break-word;white-space:normal}
@@ -473,8 +572,8 @@ pre{background:var(--code);border:1px solid var(--rule);border-radius:7px;
 .tname.read{background:transparent;border:1px solid var(--rule);color:var(--ink3)}
 .targ{font-family:var(--mono);font-size:11.5px;word-break:break-word}
 .tout{margin-top:3px;color:var(--ink3);font-family:var(--mono);font-size:11px;
-  white-space:pre-wrap;max-height:76px;overflow:hidden;
-  -webkit-mask-image:linear-gradient(#000 60%,transparent)}
+  white-space:pre-wrap;word-break:break-word}
+.clip.step-out{--clip-h:76px}
 .note{border-left:3px solid var(--accent);padding:2px 0 2px 13px;margin:14px 0;
   color:var(--ink2);font-size:13.5px;max-width:76ch}
 """
@@ -483,6 +582,19 @@ JS = """
 const D = window.__DATA__;
 const f = (x,n=4)=> (x>=0?'+':'') + x.toFixed(n);
 const cls = (d,sig)=> (sig? (d>0?'pos':'neg') : 'flat') + (sig?' sig':'');
+
+// One wrapper for every long output on the page. `kept` is what the bundle
+// carries and `n` is what the agent actually saw; when they differ the page
+// says so, because a cap that looks like the end of the output is the same
+// class of error as a search that silently returns nothing.
+function clip(inner, kept, n, extra){
+  const cut = (n||0) - (kept||0);
+  const note = cut > 0
+    ? `<span class="cnote">+${cut.toLocaleString()} more chars not captured — rebuild with --max-out</span>`
+    : '';
+  return `<div class="clip${extra?' '+extra:''}"><div class="cbody">${inner}</div>`
+       + `<button class="ctog" type="button" aria-expanded="false">▸ show all</button>${note}</div>`;
+}
 
 function armCard(inst, arm){
   const a = inst.arms[arm], t = D.arm_tool[arm] || '';
@@ -493,7 +605,13 @@ function armCard(inst, arm){
   if(a.searches.length){
     for(const q of a.searches){
       s += `<div class="q">${t} ${q.argv.map(x=>JSON.stringify(x)).join(' ')}</div>`;
-      s += `<pre>${q.out ? esc(q.out) : '(no output, exit '+q.exit+')'}</pre>`;
+      const missing = !q.out && q.bytes > 0
+        ? `(${q.bytes.toLocaleString()} bytes returned, not captured — rebuild the run with PROV=full)`
+        : '(no output, exit '+q.exit+')';
+      const qbody = `<pre>${q.out ? esc(q.out) : missing}</pre>`;
+      s += q.out && q.out.length > 700
+         ? clip(qbody, q.out.length, q.n)
+         : qbody;
     }
   } else {
     s += `<div class="none">never invoked ${t||'a Bash search tool'} — used the built-in Grep tool</div>`;
@@ -501,14 +619,26 @@ function armCard(inst, arm){
   if(a.steps && a.steps.length){
     s += `<details class="traj"><summary>▸ full trajectory (${a.steps.length} steps)</summary>`;
     a.steps.forEach((st,ix)=>{
+      if(st.k==='cut'){
+        s += `<div class="cut">… ${st.v} further steps not captured — rebuild with --max-steps</div>`;
+        return;
+      }
       if(st.k==='say'){
-        s += `<div class="step say"><span class="n">${ix+1}</span><span class="b">${esc(st.v)}</span></div>`;
+        const say = esc(st.v);
+        s += `<div class="step say"><span class="n">${ix+1}</span><span class="b">`
+           + (st.v.length > 500 ? clip(say, st.v.length, st.n) : say)
+           + `</span></div>`;
       } else {
         const cls = (st.name==='Read'||st.name==='Glob') ? 'tname read' : 'tname';
+        const out = st.out
+          ? (st.out.length > 300
+              ? clip(`<div class="tout">${esc(st.out)}</div>`, st.out.length, st.n, 'step-out')
+              : `<div class="tout">${esc(st.out)}</div>`)
+          : '';
         s += `<div class="step"><span class="n">${ix+1}</span><span class="b">`
            + `<span class="${cls}">${esc(st.name)}</span>`
-           + `<span class="targ">${esc(st.v)}</span>`
-           + (st.out ? `<div class="tout">${esc(st.out)}</div>` : '')
+           + `<span class="targ">${esc(st.v)}${st.vn>st.v.length?' …':''}</span>`
+           + out
            + `</span></div>`;
       }
     });
@@ -559,6 +689,16 @@ function render(){
   document.getElementById('count').textContent =
     `${shown} of ${D.detail.length} shown (trajectories captured for ${D.n_detail} of ${D.n} instances)`;
 }
+// Delegated: cards are re-rendered on every filter change, so per-element
+// handlers would be rebound (or lost) each time.
+document.addEventListener('click', e => {
+  const b = e.target.closest('.ctog');
+  if(!b) return;
+  const box = b.closest('.clip');
+  const open = box.classList.toggle('open');
+  b.setAttribute('aria-expanded', open ? 'true' : 'false');
+  b.textContent = open ? '▾ show less' : '▸ show all';
+});
 document.getElementById('lang').onchange=render;
 document.getElementById('kind').onchange=render;
 document.getElementById('theme').onclick=()=>{
@@ -749,8 +889,22 @@ if __name__ == "__main__":
                          "the sub-* labels' 'no Grep' is false — relabel them. A "
                          "viewer that mislabels the treatment is worse than none.")
     ap.add_argument("--instances", type=int, default=48)
+    # How much of each output the bundle carries. Every one of these trades
+    # page weight for how much of a trajectory can actually be read; the page
+    # states what any of them dropped, so raising them is a choice rather
+    # than a repair.
+    ap.add_argument("--max-out", type=int, default=MAX_OUT,
+                    help="chars of each search's output to keep")
+    ap.add_argument("--max-tool-out", type=int, default=MAX_TOOL_OUT,
+                    help="chars of each tool result in the trajectory")
+    ap.add_argument("--max-steps", type=int, default=MAX_STEPS,
+                    help="trajectory steps per session")
     ap.add_argument("--out", type=Path, default=Path("/tmp/swexplore-viewer.html"))
     a = ap.parse_args()
+
+    # Module scope, so this rebinds the globals that searches_of/timeline_of
+    # read; both run later, inside build().
+    MAX_OUT, MAX_TOOL_OUT, MAX_STEPS = a.max_out, a.max_tool_out, a.max_steps
 
     ARMS = tuple(x.strip() for x in a.arms.split(",") if x.strip())
     ARM_TOOL = {x: ALL_ARM_TOOL[x] for x in ARMS if ALL_ARM_TOOL.get(x)}

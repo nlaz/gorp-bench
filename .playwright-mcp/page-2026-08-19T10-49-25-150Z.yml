@@ -1,0 +1,499 @@
+- generic [ref=f1e2]:
+  - button "◐ theme" [ref=f1e3] [cursor=pointer]
+  - heading "s36 — Claude Code vs Claude Code + gorp (desc-v12), 150 instances, claude-sonnet-5" [level=1] [ref=f1e4]
+  - generic [ref=f1e5]:
+    - text: SWE-Explore · 150 tasks · 2 arms · 300 agent sessions · $55.96 · run
+    - code [ref=f1e6]: s36
+  - heading "What this is" [level=2] [ref=f1e7]
+  - paragraph [ref=f1e8]: The question. A coding agent given a bug report has to find the code that needs changing. It does that by searching the repository. This measures whether the search tool it is given changes how well it finds that code — and what the tool costs.
+  - paragraph [ref=f1e9]: The benchmark. SWE-Explore is 848 real GitHub issues across 203 repositories and 10 languages. For each one it records the code regions that agents who actually fixed the bug read along the way, intersected across several successful attempts. That is the answer key. The agent under test returns at most five regions — a file path and a line range — and is scored on how well those five overlap the key.
+  - paragraph [ref=f1e10]: "The arms. Each arm is the same agent on the same task with the same prompt. The only difference is which search tools exist:"
+  - table [ref=f1e12]:
+    - rowgroup [ref=f1e13]:
+      - row [ref=f1e14]:
+        - columnheader "arm" [ref=f1e15]
+        - columnheader "tools available" [ref=f1e16]
+        - columnheader "meaning" [ref=f1e17]
+      - row [ref=f1e18]:
+        - cell "cc" [ref=f1e19]
+        - cell "Read, Glob, Grep" [ref=f1e20]
+        - cell "built-in Grep only" [ref=f1e21]
+      - row [ref=f1e22]:
+        - cell "cc-gorp" [ref=f1e23]
+        - cell "?" [ref=f1e24]
+        - cell "cc-gorp" [ref=f1e25]
+  - generic [ref=f1e26]: Why an arm that differs by one flag. Both arms are the same agent, same prompt, same tool description, same index — the only difference is whether the search tool expands the query with vocabulary mined from the repository's own bridge files. A contrast that narrow is what lets a difference be attributed to the mechanism rather than to the tool being present at all.
+  - heading "How to read the numbers" [level=2] [ref=f1e27]
+  - table [ref=f1e29]:
+    - rowgroup [ref=f1e30]:
+      - row [ref=f1e31]:
+        - columnheader "measure" [ref=f1e32]
+        - columnheader "what it asks" [ref=f1e33]
+      - row [ref=f1e34]:
+        - cell "hitRegion@5" [ref=f1e35]
+        - cell "Of the code regions a successful fix actually read, what share did the agent's five answers overlap? The primary measure." [ref=f1e36]
+      - row [ref=f1e37]:
+        - cell "hitFile@5" [ref=f1e38]
+        - cell "Same question at file level — did it reach the right files, never mind the exact lines?" [ref=f1e39]
+      - row [ref=f1e40]:
+        - cell "ctxEff" [ref=f1e41]
+        - cell "Of the lines the agent handed back, what share were actually useful? Rewards being relevant and compact." [ref=f1e42]
+      - row [ref=f1e43]:
+        - cell "nDCG@500" [ref=f1e44]
+        - cell "Coverage within a 500-line budget, rewarding useful regions ranked earlier." [ref=f1e45]
+      - row [ref=f1e46]:
+        - cell "recall@100" [ref=f1e47]
+        - cell "How much of the needed code is reachable in the first 100 lines — the tight-budget view." [ref=f1e48]
+      - row [ref=f1e49]:
+        - cell "precision" [ref=f1e50]
+        - cell "Line-level precision of the returned regions." [ref=f1e51]
+      - row [ref=f1e52]:
+        - cell "cost $" [ref=f1e53]
+        - cell "US dollars of model spend for that one session." [ref=f1e54]
+      - row [ref=f1e55]:
+        - cell "turns" [ref=f1e56]
+        - cell "How many back-and-forth steps the agent took." [ref=f1e57]
+  - generic [ref=f1e58]: "Difference, confidence, wins/losses. Every comparison is paired: the same task run under both arms, so task difficulty cancels. The difference is the average change. The 95% confidence interval is the range the true value plausibly sits in — if it contains zero, there is no detectable effect. The wins/losses count how many individual tasks moved each way, which catches an average dragged around by a handful of tasks rather than a consistent shift."
+  - generic [ref=f1e59]:
+    - generic [ref=f1e60]: HEADLINE — cc-gorp vs cc, on hitRegion@5
+    - generic [ref=f1e61]: "-0.0007"
+    - generic [ref=f1e62]: 95% confidence [-0.0239, +0.0218] · 23 wins / 24 losses · sign p=1.000 — no measurable difference
+  - heading "Average per arm" [level=2] [ref=f1e63]
+  - table [ref=f1e65]:
+    - rowgroup [ref=f1e66]:
+      - row [ref=f1e67]:
+        - columnheader "measure" [ref=f1e68]
+        - columnheader "cc" [ref=f1e69]
+        - columnheader "cc-gorp" [ref=f1e70]
+      - row [ref=f1e71]:
+        - cell "hitRegion@5" [ref=f1e72]
+        - cell "0.4758" [ref=f1e73]
+        - cell "0.4751" [ref=f1e74]
+      - row [ref=f1e75]:
+        - cell "hitFile@5" [ref=f1e76]
+        - cell "0.5424" [ref=f1e77]
+        - cell "0.5440" [ref=f1e78]
+      - row [ref=f1e79]:
+        - cell "ctxEff" [ref=f1e80]
+        - cell "0.9318" [ref=f1e81]
+        - cell "0.9112" [ref=f1e82]
+      - row [ref=f1e83]:
+        - cell "nDCG@500" [ref=f1e84]
+        - cell "0.9654" [ref=f1e85]
+        - cell "0.9630" [ref=f1e86]
+      - row [ref=f1e87]:
+        - cell "recall@100" [ref=f1e88]
+        - cell "0.1126" [ref=f1e89]
+        - cell "0.1182" [ref=f1e90]
+      - row [ref=f1e91]:
+        - cell "precision" [ref=f1e92]
+        - cell "0.7399" [ref=f1e93]
+        - cell "0.7084" [ref=f1e94]
+      - row [ref=f1e95]:
+        - cell "cost $" [ref=f1e96]
+        - cell "0.1779" [ref=f1e97]
+        - cell "0.1952" [ref=f1e98]
+      - row [ref=f1e99]:
+        - cell "turns" [ref=f1e100]
+        - cell "8.2600" [ref=f1e101]
+        - cell "9.0533" [ref=f1e102]
+  - heading "Every comparison" [level=2] [ref=f1e103]
+  - heading "cc-gorp vs cc" [level=3] [ref=f1e104]
+  - table [ref=f1e106]:
+    - rowgroup [ref=f1e107]:
+      - row [ref=f1e108]:
+        - columnheader "measure" [ref=f1e109]
+        - columnheader "difference" [ref=f1e110]
+        - columnheader "95% confidence" [ref=f1e111]
+        - columnheader "wins/losses" [ref=f1e112]
+        - columnheader "sign p" [ref=f1e113]
+      - row [ref=f1e114]:
+        - cell "hitRegion@5" [ref=f1e115]
+        - cell "-0.0007" [ref=f1e116]
+        - cell "[-0.0239, +0.0218]" [ref=f1e117]
+        - cell "23/24" [ref=f1e118]
+        - cell "1.000" [ref=f1e119]
+      - row [ref=f1e120]:
+        - cell "hitFile@5" [ref=f1e121]
+        - cell "+0.0016" [ref=f1e122]
+        - cell "[-0.0247, +0.0275]" [ref=f1e123]
+        - cell "23/26" [ref=f1e124]
+        - cell "0.775" [ref=f1e125]
+      - row [ref=f1e126]:
+        - cell "ctxEff" [ref=f1e127]
+        - cell "-0.0205" [ref=f1e128]
+        - cell "[-0.0463, +0.0025]" [ref=f1e129]
+        - cell "26/40" [ref=f1e130]
+        - cell "0.109" [ref=f1e131]
+      - row [ref=f1e132]:
+        - cell "nDCG@500" [ref=f1e133]
+        - cell "-0.0024" [ref=f1e134]
+        - cell "[-0.0158, +0.0107]" [ref=f1e135]
+        - cell "27/28" [ref=f1e136]
+        - cell "1.000" [ref=f1e137]
+      - row [ref=f1e138]:
+        - cell "recall@100" [ref=f1e139]
+        - cell "+0.0056" [ref=f1e140]
+        - cell "[-0.0036, +0.0142]" [ref=f1e141]
+        - cell "63/40" [ref=f1e142]
+        - cell "0.030" [ref=f1e143]
+      - row [ref=f1e144]:
+        - cell "precision" [ref=f1e145]
+        - cell "-0.0315" [ref=f1e146]
+        - cell "[-0.0674, +0.0029]" [ref=f1e147]
+        - cell "51/59" [ref=f1e148]
+        - cell "0.505" [ref=f1e149]
+      - row [ref=f1e150]:
+        - cell "cost $" [ref=f1e151]
+        - cell "+0.0173" [ref=f1e152]
+        - cell "[-0.0067, +0.0454]" [ref=f1e153]
+        - cell "95/55" [ref=f1e154]
+        - cell "0.001" [ref=f1e155]
+      - row [ref=f1e156]:
+        - cell "turns" [ref=f1e157]
+        - cell "+0.7933*" [ref=f1e158]
+        - cell "[+0.0133, +1.6600]" [ref=f1e159]
+        - cell "77/46" [ref=f1e160]
+        - cell "0.007" [ref=f1e161]
+  - heading "Did the agents actually use the tool?" [level=2] [ref=f1e162]
+  - paragraph [ref=f1e163]: A tool that is never called cannot change anything, so this is the first thing to check.
+  - generic [ref=f1e164]: cc-gorp 116/150 (77%)
+  - table [ref=f1e166]:
+    - rowgroup [ref=f1e167]:
+      - row [ref=f1e168]:
+        - columnheader "behaviour" [ref=f1e169]
+        - columnheader "gorp" [ref=f1e170]
+      - row [ref=f1e171]:
+        - cell "sessions that used it" [ref=f1e172]
+        - cell "116" [ref=f1e173]
+      - row [ref=f1e174]:
+        - cell "calls per session" [ref=f1e175]
+        - cell "3.3" [ref=f1e176]
+      - row [ref=f1e177]:
+        - cell "median query length" [ref=f1e178]
+        - cell "4 words" [ref=f1e179]
+      - row [ref=f1e180]:
+        - cell "queries using regex syntax" [ref=f1e181]
+        - cell "8%" [ref=f1e182]
+      - row [ref=f1e183]:
+        - cell "median bytes returned" [ref=f1e184]
+        - cell "1,500" [ref=f1e185]
+      - row [ref=f1e186]:
+        - cell "mean bytes returned" [ref=f1e187]
+        - cell "1,650" [ref=f1e188]
+      - row [ref=f1e189]:
+        - cell "searches returning nothing" [ref=f1e190]
+        - cell "9%" [ref=f1e191]
+  - heading "Built-in search vs the shell tool" [level=3] [ref=f1e192]
+  - table [ref=f1e194]:
+    - rowgroup [ref=f1e195]:
+      - row [ref=f1e196]:
+        - columnheader "arm" [ref=f1e197]
+        - columnheader "built-in Grep calls" [ref=f1e198]
+        - columnheader "shell calls" [ref=f1e199]
+        - columnheader "total searches" [ref=f1e200]
+      - row [ref=f1e201]:
+        - cell "cc" [ref=f1e202]
+        - cell "3.97" [ref=f1e203]
+        - cell "0.00" [ref=f1e204]
+        - cell "3.97" [ref=f1e205]
+      - row [ref=f1e206]:
+        - cell "cc-gorp" [ref=f1e207]
+        - cell "1.47" [ref=f1e208]
+        - cell "3.42" [ref=f1e209]
+        - cell "4.89" [ref=f1e210]
+  - heading "By language" [level=2] [ref=f1e211]
+  - paragraph [ref=f1e212]: Groups smaller than 8 tasks are omitted rather than reported.
+  - table [ref=f1e214]:
+    - rowgroup [ref=f1e215]:
+      - row [ref=f1e216]:
+        - columnheader "language" [ref=f1e217]
+        - columnheader "n" [ref=f1e218]
+        - columnheader "difference" [ref=f1e219]
+        - columnheader "95% confidence" [ref=f1e220]
+      - row [ref=f1e221]:
+        - cell "Python" [ref=f1e222]
+        - cell "85" [ref=f1e223]
+        - cell "+0.0040" [ref=f1e224]
+        - cell "[-0.0271, +0.0362]" [ref=f1e225]
+      - row [ref=f1e226]:
+        - cell "Go" [ref=f1e227]
+        - cell "15" [ref=f1e228]
+        - cell "-0.0472" [ref=f1e229]
+        - cell "[-0.1395, +0.0367]" [ref=f1e230]
+      - row [ref=f1e231]:
+        - cell "JavaScript" [ref=f1e232]
+        - cell "8" [ref=f1e233]
+        - cell "-0.0522" [ref=f1e234]
+        - cell "[-0.1286, +0.0219]" [ref=f1e235]
+      - row [ref=f1e236]:
+        - cell "TypeScript" [ref=f1e237]
+        - cell "8" [ref=f1e238]
+        - cell "+0.0048" [ref=f1e239]
+        - cell "[-0.0661, +0.0685]" [ref=f1e240]
+  - heading "What the agents actually did" [level=2] [ref=f1e241]
+  - paragraph [ref=f1e242]: Numbers hide behaviour. These are 48 real sessions — click any row to see the bug report, the answer key, and, for each arm, every search it ran and what came back.
+  - generic [ref=f1e243]:
+    - text: What to look for. A row marked
+    - generic [ref=f1e244]: 0×
+    - text: means that arm never invoked its search tool, so any difference on that row is run-to-run randomness rather than the tool. Re-running an identical arm twice moves the score by about as much as the difference being measured, which is what makes a small sample untrustworthy here.
+  - generic [ref=f1e245]:
+    - combobox [ref=f1e246]:
+      - option "all languages" [selected]
+      - option "C"
+      - option "C++"
+      - option "Go"
+      - option "Java"
+      - option "JavaScript"
+      - option "PHP"
+      - option "Python"
+      - option "Ruby"
+      - option "Rust"
+      - option "TypeScript"
+    - combobox [ref=f1e247]:
+      - option "all outcomes" [selected]
+      - option "first arm won"
+      - option "first arm lost"
+      - option "tied"
+    - generic [ref=f1e248]: 48 of 48 shown (trajectories captured for 48 of 150 instances)
+  - generic [ref=f1e249]:
+    - generic [ref=f1e251] [cursor=pointer]:
+      - generic [ref=f1e252]: Python
+      - generic [ref=f1e253]: pytest-dev__pytest-7982
+      - generic [ref=f1e254]: gorp 2×
+      - generic [ref=f1e255]: "+0.333"
+    - generic [ref=f1e257] [cursor=pointer]:
+      - generic [ref=f1e258]: Python
+      - generic [ref=f1e259]: sphinx-doc__sphinx-9711
+      - generic [ref=f1e260]: gorp 2×
+      - generic [ref=f1e261]: "+0.333"
+    - generic [ref=f1e263] [cursor=pointer]:
+      - generic [ref=f1e264]: C
+      - generic [ref=f1e265]: valkey-io__valkey-1842
+      - generic [ref=f1e266]: gorp 4×
+      - generic [ref=f1e267]: "+0.250"
+    - generic [ref=f1e269] [cursor=pointer]:
+      - generic [ref=f1e270]: Go
+      - generic [ref=f1e271]: gravitational__teleport-bb562408da4adeae16e025be65e170959d1ec492-vee9b09fb20c43af7e520f57e9239bbcf46b7113d
+      - generic [ref=f1e272]: gorp 4×
+      - generic [ref=f1e273]: "+0.250"
+    - generic [ref=f1e275] [cursor=pointer]:
+      - generic [ref=f1e276]: Python
+      - generic [ref=f1e277]: ansible__ansible-b8025ac160146319d2b875be3366b60c852dd35d-v0f01c69f1e2528b935359cfe578530722bca2c59
+      - generic [ref=f1e278]: gorp 4×
+      - generic [ref=f1e279]: "+0.250"
+    - generic [ref=f1e281] [cursor=pointer]:
+      - generic [ref=f1e282]: Ruby
+      - generic [ref=f1e283]: rubocop__rubocop-13424
+      - generic [ref=f1e284]: gorp 3×
+      - generic [ref=f1e285]: "+0.250"
+    - generic [ref=f1e287] [cursor=pointer]:
+      - generic [ref=f1e288]: Go
+      - generic [ref=f1e289]: navidrome__navidrome-3bc9e75b2843f91f6a1e9b604e321c2bd4fd442a
+      - generic [ref=f1e290]: gorp 3×
+      - generic [ref=f1e291]: "+0.250"
+    - generic [ref=f1e293] [cursor=pointer]:
+      - generic [ref=f1e294]: Python
+      - generic [ref=f1e295]: ansible__ansible-d62496fe416623e88b90139dc7917080cb04ce70-v0f01c69f1e2528b935359cfe578530722bca2c59
+      - generic [ref=f1e296]: gorp 2×
+      - generic [ref=f1e297]: "+0.250"
+    - generic [ref=f1e299] [cursor=pointer]:
+      - generic [ref=f1e300]: Python
+      - generic [ref=f1e301]: scikit-learn__scikit-learn-25747
+      - generic [ref=f1e302]: gorp 1×
+      - generic [ref=f1e303]: "+0.250"
+    - generic [ref=f1e305] [cursor=pointer]:
+      - generic [ref=f1e306]: Python
+      - generic [ref=f1e307]: django__django-16899
+      - generic [ref=f1e308]: gorp 0×
+      - generic [ref=f1e309]: "+0.500"
+    - generic [ref=f1e311] [cursor=pointer]:
+      - generic [ref=f1e312]: PHP
+      - generic [ref=f1e313]: php-cs-fixer__php-cs-fixer-8064
+      - generic [ref=f1e314]: gorp 0×
+      - generic [ref=f1e315]: "+0.400"
+    - generic [ref=f1e317] [cursor=pointer]:
+      - generic [ref=f1e318]: Python
+      - generic [ref=f1e319]: scikit-learn__scikit-learn-25102
+      - generic [ref=f1e320]: gorp 0×
+      - generic [ref=f1e321]: "+0.200"
+    - generic [ref=f1e323] [cursor=pointer]:
+      - generic [ref=f1e324]: Python
+      - generic [ref=f1e325]: astropy__astropy-14508
+      - generic [ref=f1e326]: gorp 1×
+      - generic [ref=f1e327]: "-0.500"
+    - generic [ref=f1e329] [cursor=pointer]:
+      - generic [ref=f1e330]: Go
+      - generic [ref=f1e331]: prometheus__prometheus-10720
+      - generic [ref=f1e332]: gorp 2×
+      - generic [ref=f1e333]: "-0.500"
+    - generic [ref=f1e335] [cursor=pointer]:
+      - generic [ref=f1e336]: C++
+      - generic [ref=f1e337]: nlohmann__json-4237
+      - generic [ref=f1e338]: gorp 1×
+      - generic [ref=f1e339]: "-0.400"
+    - generic [ref=f1e341] [cursor=pointer]:
+      - generic [ref=f1e342]: Python
+      - generic [ref=f1e343]: mwaskom__seaborn-3187
+      - generic [ref=f1e344]: gorp 3×
+      - generic [ref=f1e345]: "-0.333"
+    - generic [ref=f1e347] [cursor=pointer]:
+      - generic [ref=f1e348]: C
+      - generic [ref=f1e349]: micropython__micropython-13039
+      - generic [ref=f1e350]: gorp 2×
+      - generic [ref=f1e351]: "-0.250"
+    - generic [ref=f1e353] [cursor=pointer]:
+      - generic [ref=f1e354]: Python
+      - generic [ref=f1e355]: pytest-dev__pytest-5840
+      - generic [ref=f1e356]: gorp 3×
+      - generic [ref=f1e357]: "-0.250"
+    - generic [ref=f1e359] [cursor=pointer]:
+      - generic [ref=f1e360]: Python
+      - generic [ref=f1e361]: pydata__xarray-6721
+      - generic [ref=f1e362]: gorp 4×
+      - generic [ref=f1e363]: "-0.250"
+    - generic [ref=f1e365] [cursor=pointer]:
+      - generic [ref=f1e366]: Go
+      - generic [ref=f1e367]: gin-gonic__gin-1805
+      - generic [ref=f1e368]: gorp 2×
+      - generic [ref=f1e369]: "-0.200"
+    - generic [ref=f1e371] [cursor=pointer]:
+      - generic [ref=f1e372]: JavaScript
+      - generic [ref=f1e373]: immutable-js__immutable-js-2005
+      - generic [ref=f1e374]: gorp 6×
+      - generic [ref=f1e375]: "-0.200"
+    - generic [ref=f1e377] [cursor=pointer]:
+      - generic [ref=f1e378]: Python
+      - generic [ref=f1e379]: sphinx-doc__sphinx-7889
+      - generic [ref=f1e380]: gorp 0×
+      - generic [ref=f1e381]: "-0.500"
+    - generic [ref=f1e383] [cursor=pointer]:
+      - generic [ref=f1e384]: Python
+      - generic [ref=f1e385]: django__django-16454
+      - generic [ref=f1e386]: gorp 0×
+      - generic [ref=f1e387]: "-0.333"
+    - generic [ref=f1e389] [cursor=pointer]:
+      - generic [ref=f1e390]: Python
+      - generic [ref=f1e391]: internetarchive__openlibrary-60725705782832a2cb22e17c49697948a42a9d03-v298a7a812ceed28c4c18355a091f1b268fe56d86
+      - generic [ref=f1e392]: gorp 16×
+      - generic [ref=f1e393]: "+0.000"
+    - generic [ref=f1e395] [cursor=pointer]:
+      - generic [ref=f1e396]: Java
+      - generic [ref=f1e397]: apache__lucene-12022
+      - generic [ref=f1e398]: gorp 8×
+      - generic [ref=f1e399]: "+0.000"
+    - generic [ref=f1e401] [cursor=pointer]:
+      - generic [ref=f1e402]: Go
+      - generic [ref=f1e403]: caddyserver__caddy-6288
+      - generic [ref=f1e404]: gorp 8×
+      - generic [ref=f1e405]: "+0.000"
+    - generic [ref=f1e407] [cursor=pointer]:
+      - generic [ref=f1e408]: Go
+      - generic [ref=f1e409]: future-architect__vuls-9aa0d87a21bede91c2b45c32187456bb69455e92
+      - generic [ref=f1e410]: gorp 8×
+      - generic [ref=f1e411]: "+0.000"
+    - generic [ref=f1e413] [cursor=pointer]:
+      - generic [ref=f1e414]: Python
+      - generic [ref=f1e415]: mwaskom__seaborn-3069
+      - generic [ref=f1e416]: gorp 8×
+      - generic [ref=f1e417]: "+0.000"
+    - generic [ref=f1e419] [cursor=pointer]:
+      - generic [ref=f1e420]: Go
+      - generic [ref=f1e421]: future-architect__vuls-9a32a94806b54141b7ff12503c48da680ebcf199
+      - generic [ref=f1e422]: gorp 7×
+      - generic [ref=f1e423]: "+0.000"
+    - generic [ref=f1e425] [cursor=pointer]:
+      - generic [ref=f1e426]: Go
+      - generic [ref=f1e427]: gohugoio__hugo-12204
+      - generic [ref=f1e428]: gorp 7×
+      - generic [ref=f1e429]: "+0.000"
+    - generic [ref=f1e431] [cursor=pointer]:
+      - generic [ref=f1e432]: Python
+      - generic [ref=f1e433]: psf__requests-6028
+      - generic [ref=f1e434]: gorp 6×
+      - generic [ref=f1e435]: "+0.000"
+    - generic [ref=f1e437] [cursor=pointer]:
+      - generic [ref=f1e438]: C
+      - generic [ref=f1e439]: valkey-io__valkey-790
+      - generic [ref=f1e440]: gorp 6×
+      - generic [ref=f1e441]: "+0.000"
+    - generic [ref=f1e443] [cursor=pointer]:
+      - generic [ref=f1e444]: Go
+      - generic [ref=f1e445]: flipt-io__flipt-e5fe37c379e1eec2dd3492c5737c0be761050b26
+      - generic [ref=f1e446]: gorp 5×
+      - generic [ref=f1e447]: "+0.000"
+    - generic [ref=f1e449] [cursor=pointer]:
+      - generic [ref=f1e450]: Python
+      - generic [ref=f1e451]: internetarchive__openlibrary-e8084193a895d8ee81200f49093389a3887479ce-ve8c8d62a2b60610a3c4631f5f23ed866bada9818
+      - generic [ref=f1e452]: gorp 5×
+      - generic [ref=f1e453]: "+0.000"
+    - generic [ref=f1e455] [cursor=pointer]:
+      - generic [ref=f1e456]: Java
+      - generic [ref=f1e457]: javaparser__javaparser-4561
+      - generic [ref=f1e458]: gorp 5×
+      - generic [ref=f1e459]: "+0.000"
+    - generic [ref=f1e461] [cursor=pointer]:
+      - generic [ref=f1e462]: Python
+      - generic [ref=f1e463]: qutebrowser__qutebrowser-0aa57e4f7243024fa4bba8853306691b5dbd77b3-v5149fcda2a9a6fe1d35dfed1bade1444a11ef271
+      - generic [ref=f1e464]: gorp 5×
+      - generic [ref=f1e465]: "+0.000"
+    - generic [ref=f1e467] [cursor=pointer]:
+      - generic [ref=f1e468]: Python
+      - generic [ref=f1e469]: sympy__sympy-14976
+      - generic [ref=f1e470]: gorp 5×
+      - generic [ref=f1e471]: "+0.000"
+    - generic [ref=f1e473] [cursor=pointer]:
+      - generic [ref=f1e474]: Python
+      - generic [ref=f1e475]: sympy__sympy-22080
+      - generic [ref=f1e476]: gorp 5×
+      - generic [ref=f1e477]: "+0.000"
+    - generic [ref=f1e479] [cursor=pointer]:
+      - generic [ref=f1e480]: TypeScript
+      - generic [ref=f1e481]: tutao__tutanota-f3ffe17af6e8ab007e8d461355057ad237846d9d-vbc0d9ba8f0071fbe982809910959a6ff8884dbbf
+      - generic [ref=f1e482]: gorp 5×
+      - generic [ref=f1e483]: "+0.000"
+    - generic [ref=f1e485] [cursor=pointer]:
+      - generic [ref=f1e486]: TypeScript
+      - generic [ref=f1e487]: protonmail__webclients-815695401137dac2975400fc610149a16db8214b
+      - generic [ref=f1e488]: gorp 4×
+      - generic [ref=f1e489]: "+0.000"
+    - generic [ref=f1e491] [cursor=pointer]:
+      - generic [ref=f1e492]: Python
+      - generic [ref=f1e493]: pylint-dev__pylint-6386
+      - generic [ref=f1e494]: gorp 4×
+      - generic [ref=f1e495]: "+0.000"
+    - generic [ref=f1e497] [cursor=pointer]:
+      - generic [ref=f1e498]: Python
+      - generic [ref=f1e499]: qutebrowser__qutebrowser-e5340c449f23608803c286da0563b62f58ba25b0-v059c6fdc75567943479b23ebca7c07b5e9a7f34c
+      - generic [ref=f1e500]: gorp 4×
+      - generic [ref=f1e501]: "+0.000"
+    - generic [ref=f1e503] [cursor=pointer]:
+      - generic [ref=f1e504]: Python
+      - generic [ref=f1e505]: ansible__ansible-ed6581e4db2f1bec5a772213c3e186081adc162d-v0f01c69f1e2528b935359cfe578530722bca2c59
+      - generic [ref=f1e506]: gorp 3×
+      - generic [ref=f1e507]: "+0.000"
+    - generic [ref=f1e509] [cursor=pointer]:
+      - generic [ref=f1e510]: Ruby
+      - generic [ref=f1e511]: fluent__fluentd-3608
+      - generic [ref=f1e512]: gorp 3×
+      - generic [ref=f1e513]: "+0.000"
+    - generic [ref=f1e515] [cursor=pointer]:
+      - generic [ref=f1e516]: PHP
+      - generic [ref=f1e517]: laravel__framework-48636
+      - generic [ref=f1e518]: gorp 3×
+      - generic [ref=f1e519]: "+0.000"
+    - generic [ref=f1e521] [cursor=pointer]:
+      - generic [ref=f1e522]: Python
+      - generic [ref=f1e523]: matplotlib__matplotlib-25960
+      - generic [ref=f1e524]: gorp 3×
+      - generic [ref=f1e525]: "+0.000"
+    - generic [ref=f1e527] [cursor=pointer]:
+      - generic [ref=f1e528]: Rust
+      - generic [ref=f1e529]: nushell__nushell-12950
+      - generic [ref=f1e530]: gorp 3×
+      - generic [ref=f1e531]: "+0.000"
+    - generic [ref=f1e533] [cursor=pointer]:
+      - generic [ref=f1e534]: PHP
+      - generic [ref=f1e535]: php-cs-fixer__php-cs-fixer-8367
+      - generic [ref=f1e536]: gorp 3×
+      - generic [ref=f1e537]: "+0.000"
