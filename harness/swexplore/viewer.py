@@ -58,7 +58,7 @@ ALL_ARM_TOOL = {"cc": None, "cc-rg": "rg", "cc-sg": "sg",
                 "sub-rg": "rg", "sub-sg": "sg", "sub-sgb": "sg",
                 # §36: the shipped tool, under the name the plugin ships it as.
                 "cc-gorp": "gorp", "cc-gorp-route": "gorp",
-                "cc-bash": None}
+                "cc-bash": None, "cc-gorp-route2": "gorp"}
 ARM_LABEL = dict(ALL_LABEL)
 ARM_TOOL = {"cc-rg": "rg", "cc-sg": "sg"}
 CONTRASTS = (("cc-sg", "cc", "gorp added vs Grep alone"),
@@ -237,6 +237,19 @@ def timeline_of(run_id, iid, arm):
             if not isinstance(blk, dict):
                 continue
             t = blk.get("type")
+            if t == "thinking":
+                # Present since s37's transcripts, but headless `claude -p`
+                # writes them with the text stripped (signature only) —
+                # usage.thinking_tokens proves thinking happened. Render text
+                # when a capture mechanism provides it; otherwise tally, so
+                # the page says "the agent thought here" instead of nothing.
+                th = (blk.get("thinking") or "").strip()
+                if th:
+                    steps.append({"k": "think", "v": th[:MAX_STEP_TEXT],
+                                  "n": len(th)})
+                else:
+                    steps.append({"k": "think", "v": "", "n": 0})
+                continue
             if t == "text" and (blk.get("text") or "").strip():
                 say = blk["text"].strip()
                 steps.append({"k": "say", "v": say[:MAX_STEP_TEXT], "n": len(say)})
@@ -263,6 +276,22 @@ def timeline_of(run_id, iid, arm):
                     txt = txt or ""
                     steps[ix]["out"] = txt[:MAX_TOOL_OUT]
                     steps[ix]["n"] = len(txt)
+    # Runs of redacted thinking collapse to one marker each — 600+ empty
+    # blocks per run would bury the trajectory under placeholders.
+    folded, i = [], 0
+    while i < len(steps):
+        st = steps[i]
+        if st.get("k") == "think" and not st.get("v"):
+            j = i
+            while j < len(steps) and steps[j].get("k") == "think" \
+                    and not steps[j].get("v"):
+                j += 1
+            folded.append({"k": "tredact", "v": j - i})
+            i = j
+        else:
+            folded.append(st)
+            i += 1
+    steps = folded
     kept = steps[:MAX_STEPS]
     if len(steps) > MAX_STEPS:
         # Never end a trajectory without saying it was cut. A trajectory that
@@ -567,6 +596,8 @@ pre{background:var(--code);border:1px solid var(--rule);border-radius:7px;
 .step .n{color:var(--ink3);font-family:var(--mono);font-size:10.5px;min-width:20px;
   text-align:right;padding-top:2px}
 .step .b{flex:1;min-width:0}
+.step.think .b{font-style:italic;color:var(--muted);white-space:pre-wrap}
+.step.think .b.redact{font-size:11px;opacity:.75}
 .step.say .b{color:var(--ink2)}
 .tname{display:inline-block;font-family:var(--mono);font-size:10.5px;padding:0 6px;
   border-radius:99px;background:var(--accent-soft);color:var(--accent);margin-right:6px}
@@ -622,6 +653,17 @@ function armCard(inst, arm){
     a.steps.forEach((st,ix)=>{
       if(st.k==='cut'){
         s += `<div class="cut">… ${st.v} further steps not captured — rebuild with --max-steps</div>`;
+        return;
+      }
+      if(st.k==='tredact'){
+        s += `<div class="step think"><span class="n">\u273b</span><span class="b redact">thinking (\u00d7${st.v}) \u2014 text not in transcript; headless claude -p strips it (tokens counted in usage)</span></div>`;
+        return;
+      }
+      if(st.k==='think'){
+        const th = esc(st.v);
+        s += `<div class="step think"><span class="n">\u273b</span><span class="b">`
+           + (st.v.length > 500 ? clip(th, st.v.length, st.n) : th)
+           + `</span></div>`;
         return;
       }
       if(st.k==='say'){

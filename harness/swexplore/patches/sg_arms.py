@@ -245,6 +245,24 @@ SG_LINE_V14 = (
     "not every search."
 )
 
+# v15 (§37.3): v14 with ONE clause appended to the when-to-use bullet — where
+# gorp actually earned its keep in the s37 trajectories. The paired forensics
+# put the whole efficiency gain in the 7/30 sessions where cc needed >=5
+# actions to reach gold (route got there 2.3 actions sooner, -3.1 turns);
+# where cc reached gold in <=2 actions gorp was pure overhead (+5.1 turns).
+# The clause names that boundary for the agent: gorp is for when lexical
+# search has no anchor. Derived by substitution so "one clause moved" is
+# mechanically true; cc-gorp-route stays frozen on v14 (s37 is recorded
+# against it) and v15 gets a NEW arm.
+_V15_OLD = ("- Use it when you know what something does but not what it is "
+            "called, or to sweep an unfamiliar area\n")
+_V15_NEW = ("- Use it when you know what something does but not what it is "
+            "called, or to sweep an unfamiliar area. It is strongest where "
+            "lexical search has no anchor: unfamiliar naming, cross-language "
+            "codebases, prose\n")
+assert _V15_OLD in SG_LINE_V14
+SG_LINE_V15 = SG_LINE_V14.replace(_V15_OLD, _V15_NEW)
+
 SG_DESC = os.environ.get("SWEXPLORE_SG_DESC", "v9")
 _SG_LINE = {"v9": SG_LINE, "v10": SG_LINE_V10, "v11": SG_LINE_V11}[SG_DESC]
 
@@ -287,9 +305,15 @@ ARMS = {
     # the route arm gives it. cc-bash − cc prices the shell; cc-gorp-route
     # − cc-bash is gorp + v14 net of the shell.
     "cc-bash": ("Read,Glob,Grep,Bash", ["Bash(grep *)"], ""),
+    # §37.3: cc-gorp-route's surfaces exactly, description v15 (the when-it-
+    # shines clause). route froze on v14 at s37's first spend, so the clause
+    # gets a new arm rather than an edit — the §19.9 rule, again.
+    "cc-gorp-route2": ("Read,Glob,Grep,Bash",
+                       ["Bash(gorp *)", "Bash(grep *)"], SG_LINE_V15),
 }
 ARM_TOOL = {"cc-rg": "rg", "cc-sg": "sg", "sub-rg": "rg", "sub-sg": "sg",
-            "sub-sgb": "sg", "cc-gorp": "gorp", "cc-gorp-route": "gorp"}
+            "sub-sgb": "sg", "cc-gorp": "gorp", "cc-gorp-route": "gorp",
+            "cc-gorp-route2": "gorp"}
 
 # Every search-tool name the shims cover, in one place. These names appeared as
 # four separate literals (the shim list, the two env-scrub loops and the
@@ -332,7 +356,7 @@ UNBLOCK_GREP = os.environ.get("SWEXPLORE_UNBLOCK_GREP", "") == "1"
 # frozen arms; cc-gorp-route is registered WITH grep open, so gating it on an
 # env var would make the arm's identity depend on the shell it was launched
 # from. Grep stays shimmed either way — pass-through, but logged.
-GREP_OPEN_ARMS = frozenset({"cc-gorp-route", "cc-bash"})
+GREP_OPEN_ARMS = frozenset({"cc-gorp-route", "cc-bash", "cc-gorp-route2"})
 
 # --------------------------------------------------------------------------
 # The one clause of upstream's prompt we rewrite, and why
@@ -372,6 +396,7 @@ ARM_CLAUSE = {
     # §37.2: cc-rg's clause shape with grep in the rg slot, so the shell
     # search gets equal billing across the arms being contrasted.
     "cc-bash": "Use Glob, Grep, Read, and the `grep` command (via Bash) to explore the codebase.",
+    "cc-gorp-route2": "Use Glob, Grep, Read, and the `gorp` and `grep` commands (via Bash) to explore the codebase.",
 }
 
 
@@ -549,6 +574,8 @@ def _desc_version(arm: str) -> str | None:
         return "v12"
     if arm == "cc-gorp-route":
         return "v14"
+    if arm == "cc-gorp-route2":
+        return "v15"
     return SG_DESC if ARM_TOOL.get(arm) in ("sg", "gorp") else None
 
 

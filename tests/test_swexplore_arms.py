@@ -241,7 +241,8 @@ def test_frozen_arms_are_not_grep_open():
     measured with shell grep blocked, and an arm's environment is part of its
     recorded identity."""
     m = sg_arms()
-    assert m.GREP_OPEN_ARMS == frozenset({"cc-gorp-route", "cc-bash"})
+    assert m.GREP_OPEN_ARMS == frozenset({"cc-gorp-route", "cc-bash",
+                                          "cc-gorp-route2"})
 
 
 # ------------------------------------------------------------ §37.2: cc-bash
@@ -259,3 +260,21 @@ def test_cc_bash_is_the_shell_and_nothing_else():
     assert "cc-bash" in m.GREP_OPEN_ARMS
     assert "`grep`" in m.ARM_CLAUSE["cc-bash"]
     assert "gorp" not in m.ARM_CLAUSE["cc-bash"]
+
+
+# ---------------------------------------------------------- §37.3: v15
+@needs_vendor
+def test_v15_is_v14_plus_the_when_it_shines_clause():
+    """One clause moved, mechanically: v15 differs from v14 only inside the
+    when-to-use bullet, and names the boundary the s37 trajectories measured
+    (gorp pays off where lexical search has no anchor)."""
+    m = sg_arms()
+    assert m.SG_LINE_V15 == m.SG_LINE_V14.replace(m._V15_OLD, m._V15_NEW)
+    for span in ("lexical search has no anchor", "unfamiliar naming",
+                 "cross-language", "prose"):
+        assert span in m.SG_LINE_V15, span
+    assert span not in m.SG_LINE_V14
+    tools, allowed, sysline = m.ARMS["cc-gorp-route2"]
+    assert (tools, allowed) == (m.ARMS["cc-gorp-route"][0],
+                                m.ARMS["cc-gorp-route"][1])
+    assert sysline == m.SG_LINE_V15
