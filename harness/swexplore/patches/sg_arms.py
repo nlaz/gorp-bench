@@ -339,6 +339,13 @@ SEARCH_TOOLS = ("rg", "sg", "gorp")
 # runs untreated while file scopes (which resolve no index) run treated. That
 # is a half-dose reported as a diluted null — the same failure guessplay.py's
 # CONFIGS comment documents for the rendering levers.
+# §37.3 lesson: the CLI auto-updated between two arms of one rung (2.1.235 ->
+# 2.1.236) and provaudit caught the mixture only after $28 was spent. The CLI
+# is toolchain, and toolchain gets pinned like the model: point this at a
+# versioned binary (~/.local/share/claude/versions/<v>) to freeze it for a
+# campaign. Default stays "claude" so ad-hoc runs behave as before.
+CLAUDE_BIN = os.environ.get("SWEXPLORE_CLAUDE_BIN", "claude")
+
 SG_SEARCH_FLAGS = os.environ.get("SWEXPLORE_SG_FLAGS", "")
 SG_INDEX_FLAGS = os.environ.get("SWEXPLORE_SG_INDEX_FLAGS", "")
 
@@ -527,7 +534,7 @@ def _claude_version() -> str:
     invisible."""
     global _CLAUDE_VERSION
     if _CLAUDE_VERSION is None:
-        _CLAUDE_VERSION = _run_ok(["claude", "--version"]).splitlines()[:1]
+        _CLAUDE_VERSION = _run_ok([CLAUDE_BIN, "--version"]).splitlines()[:1]
         _CLAUDE_VERSION = _CLAUDE_VERSION[0] if _CLAUDE_VERSION else ""
     return _CLAUDE_VERSION
 
@@ -836,7 +843,7 @@ class ArmExplorer(ClaudeCodeExplorer):
         env, path = self._env(cond_dir)
 
         cmd = [
-            "claude", "-p",
+            CLAUDE_BIN, "-p",
             "--output-format", "stream-json", "--verbose",
             "--permission-mode", self.permission_mode,
             "--model", self.model,

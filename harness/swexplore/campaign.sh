@@ -35,6 +35,11 @@ PROV="${PROV:-full}"
 WORKERS="${WORKERS:-3}"
 CACHE_GB="${CACHE_GB:-6}"
 MODEL="${MODEL:-sonnet}"
+# Pin the CLI the way MODEL is pinned: an auto-update between arms of one
+# rung is a toolchain mixture provaudit will fail (s37 mixed 2.1.235/2.1.236).
+# Set SWEXPLORE_CLAUDE_BIN to a versioned binary to freeze it; default keeps
+# PATH resolution for ad-hoc runs.
+export SWEXPLORE_CLAUDE_BIN="${SWEXPLORE_CLAUDE_BIN:-claude}"
 PASSES="${PASSES:-6}"
 
 # ../../data, not ../data: this script cd's to its own directory, which was
