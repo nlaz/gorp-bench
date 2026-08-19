@@ -57,7 +57,7 @@ ALL_TOOLS = {
 ALL_ARM_TOOL = {"cc": None, "cc-rg": "rg", "cc-sg": "sg",
                 "sub-rg": "rg", "sub-sg": "sg", "sub-sgb": "sg",
                 # §36: the shipped tool, under the name the plugin ships it as.
-                "cc-gorp": "gorp"}
+                "cc-gorp": "gorp", "cc-gorp-route": "gorp"}
 ARM_LABEL = dict(ALL_LABEL)
 ARM_TOOL = {"cc-rg": "rg", "cc-sg": "sg"}
 CONTRASTS = (("cc-sg", "cc", "gorp added vs Grep alone"),

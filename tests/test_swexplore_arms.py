@@ -168,3 +168,77 @@ def test_cross_repo_paths_resolve():
     assert m.BENCH_ROOT == BENCH
     assert m.SHIM.exists()
     assert m.LOCBENCH.is_dir()
+
+
+# ----------------------------------------------------------- §37: cc-gorp-route
+@needs_vendor
+def test_v13_lineage_is_preserved():
+    """v13 (superseded before any cell ran) stays defined and derived: the
+    lineage v12 -> +route clause -> v14 rewrite is part of the record."""
+    m = sg_arms()
+    assert m.SG_LINE_V13 == m.SG_LINE_V12 + m.ROUTE_CLAUSE_V13
+
+
+@needs_vendor
+def test_v14_routes_names_and_calibrates_verification():
+    """The three treatment ideas v14 carries; a rewrite that drops one is a
+    different arm. Checked as spans, §19.9-style."""
+    m = sg_arms()
+    for clause in (
+        "ranked semantic search",                       # not "code search"
+        "use grep, not gorp",                           # routing
+        "pasted as-is",                                 # query steering
+        "widen with -k 20 before rephrasing",           # escalate, then rephrase
+        "candidates, not conclusions",                  # trust calibration
+        "Verify what you keep, not every search.",      # the anti-redundancy brake
+        "list candidate spellings in one query",        # kept from v11: best shape
+    ):
+        assert clause in m.SG_LINE_V14, clause
+
+
+@needs_vendor
+def test_v14_does_not_advertise_what_is_dead_or_demoted():
+    """-e is grep's job in this arm, and the §31 pipe syntax failed its
+    registered gate (§31.2: merged ranking covered 68.9% of the sequential
+    union against a >=95% bar) — neither may appear in the description."""
+    m = sg_arms()
+    assert "-e" not in m.SG_LINE_V14
+    assert "|" not in m.SG_LINE_V14
+    assert not re.search(r"\bsg\b", m.SG_LINE_V14)
+
+
+@needs_vendor
+def test_cc_gorp_route_is_registered_everywhere():
+    m = sg_arms()
+    triage = _load(SWEX / "triage_swex.py", "_t3_triage_swex")
+    analyze = _load(SWEX / "analyze.py", "_t3_analyze")
+    viewer = _load(SWEX / "viewer.py", "_t3_viewer")
+    assert m.ARM_TOOL["cc-gorp-route"] == "gorp"
+    for name, reg in (("triage_swex", triage.ALL_ARM_TOOL),
+                      ("analyze", analyze.ALL_ARM_TOOL),
+                      ("viewer", viewer.ALL_ARM_TOOL)):
+        assert reg.get("cc-gorp-route") == "gorp", f"{name} missing cc-gorp-route"
+    patch = (SWEX / "patches" / "0001-eval_runner-arms-cost-rolling.patch").read_text()
+    assert '"cc-gorp-route"' in patch.split("SG_ARMS = {")[1].split("}")[0]
+    assert '"cc-gorp-route": lambda rec: _sg_arm_method(rec, "cc-gorp-route")' in patch
+
+
+@needs_vendor
+def test_cc_gorp_route_is_additive_and_grep_open():
+    """The arm's registration IS the grep-open state: not an env switch."""
+    m = sg_arms()
+    tools, allowed, sysline = m.ARMS["cc-gorp-route"]
+    assert "Grep" in tools and "Bash" in tools
+    assert allowed == ["Bash(gorp *)", "Bash(grep *)"]
+    assert sysline == m.SG_LINE_V14
+    assert "cc-gorp-route" in m.GREP_OPEN_ARMS
+    assert "`grep`" in m.ARM_CLAUSE["cc-gorp-route"]
+
+
+@needs_vendor
+def test_frozen_arms_are_not_grep_open():
+    """GREP_OPEN_ARMS must never grow a frozen arm: cc-gorp's s36 cells were
+    measured with shell grep blocked, and an arm's environment is part of its
+    recorded identity."""
+    m = sg_arms()
+    assert m.GREP_OPEN_ARMS == frozenset({"cc-gorp-route"})

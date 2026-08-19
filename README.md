@@ -167,6 +167,20 @@ has Grep? Note it does not pool with the §27–§33 ledger — those ran
 `claude-sonnet-5`, and §36 pins `claude-sonnet-4-5-20250929` to make the
 comparison against the paper's Sonnet-4.5 row like-for-like for the first time.
 
+`cc-gorp-route` (§37, registered) is the routed-product candidate built
+from what s36 measured: the only cell with a positive delta was gorp and
+Grep used *together*; gorp substituting for grep was the worst cell; and the
+harness block-steer had pushed 380 lexical grep intents into ranked search.
+It bundles three deliberate deltas against `cc-gorp` — description `v13`
+(= `v12` + one appended routing clause: grep for names you know, gorp for
+guesses and wide sweeps), shell `grep`/`egrep`/`fgrep` pass through (still
+shimmed, so logged), and a block-steer for `rg`/`sg` that names both tools.
+Bundled on purpose: the registered question is "does the routed,
+grep-permissive product beat `cc`?", not which delta did it. Grep-openness is
+part of the arm's registration (`GREP_OPEN_ARMS` in `sg_arms.py`), never the
+`SWEXPLORE_UNBLOCK_GREP` operator switch, so the arm means the same thing in
+every shell.
+
 For the same reason, harvested shim logs say `semgrep` where the agent typed
 `semgrep`. Every parser here accepts each name the engine has shipped under.
 Adding a name means adding it in six places for swexplore — `sg_arms.ARMS`

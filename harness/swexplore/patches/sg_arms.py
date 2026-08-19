@@ -162,6 +162,89 @@ SG_LINE_V11 = (
 # the "sg" inside other words; \b anchors it to the whole token.
 SG_LINE_V12 = re.sub(r"\bsg\b", "gorp", SG_LINE_V11)
 
+# v13 (§37): v12 plus ONE appended routing clause, derived by concatenation so
+# "v12 is a prefix of v13" is true by construction (tests assert it). Every
+# sentence encodes an s36 forensic finding:
+#   route:  the only positive cell was gorp AND Grep together (Δ+0.014);
+#           gorp substituting for grep was the worst (Δ-0.022); exact-string
+#           work favoured grep (-e hit gold 54% vs ranked 74%).
+#   query:  verbatim issue titles ranked gold top-5 in 56% of instances (#1
+#           in two sessions that never saw gold); 30 queries had gold buried
+#           at median rank 12, just under the default window — widen, don't
+#           rephrase.
+#   verify: cc-gorp answers carried +31% wrong-file regions (109 vs 83) —
+#           plausible semantic neighbours trusted straight into the answer.
+#           Verification is anchored to the COMMIT POINT ("before a hit
+#           anchors your answer... what you keep, not every search") so it
+#           bounds at ~5 checks/session instead of taxing every search —
+#           §30.3 measured what an unconditional follow-up habit costs.
+# Formatted in the built-in tools' idiom (verified against the bundled
+# Grep/Glob descriptions in claude 2.1.235): one identity line, then one
+# bullet per fact, examples inlined in parens inside the bullet they
+# illustrate, prescription reserved for tool ROUTING and always paired with
+# its reason. Capability statements are domain-neutral (files, paths, the
+# directory tree); code flavour lives only in the examples — Grep's own
+# convention.
+# The arm that carries this line also unblocks shell grep — the clause must
+# not advertise a blocked path.
+ROUTE_CLAUSE_V13 = (
+    " Route by what you already know: when the task names the thing — an "
+    "identifier from a traceback, an exact error string — the Grep tool or "
+    "shell grep finds it directly. Use gorp when you know what the code "
+    "does but not what it is called, or to sweep an unfamiliar area before "
+    "narrowing. Query in the task's own words first: an error line or "
+    "issue title pasted verbatim ranks well. If the answer should be there "
+    "but the top 5 misses, widen with -k 20 before rephrasing. gorp "
+    "returns candidates, not conclusions — before a hit anchors your "
+    "answer, confirm it with Grep or by reading it. Verify what you keep, "
+    "not every search."
+)
+SG_LINE_V13 = SG_LINE_V12 + ROUTE_CLAUSE_V13
+
+# v14 (§37): the integrated rewrite, superseding v13 BEFORE any cell ran —
+# legitimate only because cc-gorp-route has zero recorded cells; it freezes at
+# first spend. v13's concatenation preserved attribution but read assembled it
+# contradicted itself: the opener invited identifier queries the routing
+# clause then sent to grep; -e and "confirm with Grep" named two different
+# verification tools; "rephrase" and "widen before rephrasing" gave opposite
+# escalation orders 100 words apart. v14 resolves the seams and cuts v13's
+# 257 words to ~150:
+#   * "ranked semantic search", not "code search" — the engine also searches
+#     prose (labbench's md-v1 corpus is legal documents).
+#   * -e is not advertised: shell grep ships beside it in this arm and -e was
+#     the weakest query shape s36 measured (54% vs ranked 74%).
+#   * the v10 "start wide / narrow only after" prescription is dropped:
+#     s36's scoped searches hit gold at high rates once scored
+#     scope-aware, so the path argument is stated as a capability in
+#     the mechanics parenthetical, not a policy.
+#   * the §31 multi-phrase pipe syntax stays UNADVERTISED, per §31.2's failed
+#     gate (merged ranking covered 68.9% of the sequential union, bar >=95%;
+#     merging re-imports an agent's abandoned reformulation as a live phrase).
+#   * kept: candidate-spellings + the example (74%, best shape), verbatim
+#     text-as-query, widen-then-rephrase (bare -k means 20 in the shipped CLI),
+#     and verify-at-commit.
+SG_LINE_V14 = (
+    "Additionally, `gorp` is available via Bash: a powerful ranked "
+    "semantic search tool.\n"
+    "- Use it when you know what something does but not what it is called, "
+    "or to sweep an unfamiliar area\n"
+    '- `gorp "query"` takes a phrase or a question and returns the most '
+    "relevant locations as path:line:text (top 5; `-k N` for more; a path "
+    "argument narrows the scope)\n"
+    "- When you are unsure of a name, list candidate spellings in one query "
+    'rather than a regex (e.g. gorp "retry_backoff backoff_delay '
+    'compute_delay" → src/net/retry.rs:142:fn backoff_delay(attempt: u32))\n'
+    "- Verbatim text works well: an error message or a sentence describing "
+    "the problem, pasted as-is\n"
+    "- When you already have the name — an identifier from a traceback, an "
+    "exact string — use grep, not gorp; it finds the name directly\n"
+    "- Ranked, not exhaustive: if the answer should be there but the top 5 "
+    "misses, widen with -k 20 before rephrasing\n"
+    "- Results are candidates, not conclusions — before a hit anchors your "
+    "answer, confirm it with Grep or by reading it. Verify what you keep, "
+    "not every search."
+)
+
 SG_DESC = os.environ.get("SWEXPLORE_SG_DESC", "v9")
 _SG_LINE = {"v9": SG_LINE, "v10": SG_LINE_V10, "v11": SG_LINE_V11}[SG_DESC]
 
@@ -184,9 +267,20 @@ ARMS = {
     # one description and pinning it here is what makes the arm name mean
     # something.
     "cc-gorp": ("Read,Glob,Grep,Bash", ["Bash(gorp *)"], SG_LINE_V12),
+    # §37: the routed-product candidate. THREE deliberate deltas from
+    # cc-gorp, bundled because the registered question is "does the routed,
+    # grep-permissive product beat cc?", not which delta did it:
+    #   1. description v13 = v12 + one routing clause (grep for known names,
+    #      gorp for guesses — what s36's win/loss cells actually measured);
+    #   2. shell grep/egrep/fgrep pass through for this arm (still shimmed,
+    #      so every call is logged);
+    #   3. the block-steer for rg/sg names both tools — s36's cc-gorp steer
+    #      sent 380 lexical grep intents into ranked search instead.
+    "cc-gorp-route": ("Read,Glob,Grep,Bash",
+                      ["Bash(gorp *)", "Bash(grep *)"], SG_LINE_V14),
 }
 ARM_TOOL = {"cc-rg": "rg", "cc-sg": "sg", "sub-rg": "rg", "sub-sg": "sg",
-            "sub-sgb": "sg", "cc-gorp": "gorp"}
+            "sub-sgb": "sg", "cc-gorp": "gorp", "cc-gorp-route": "gorp"}
 
 # Every search-tool name the shims cover, in one place. These names appeared as
 # four separate literals (the shim list, the two env-scrub loops and the
@@ -224,6 +318,13 @@ SG_INDEX_FLAGS = os.environ.get("SWEXPLORE_SG_INDEX_FLAGS", "")
 # with the block, and their cells must stay comparable to themselves.
 UNBLOCK_GREP = os.environ.get("SWEXPLORE_UNBLOCK_GREP", "") == "1"
 
+# Arms whose *registration* includes open shell grep, independent of the env
+# switch above. UNBLOCK_GREP is an operator knob and must stay off for the
+# frozen arms; cc-gorp-route is registered WITH grep open, so gating it on an
+# env var would make the arm's identity depend on the shell it was launched
+# from. Grep stays shimmed either way — pass-through, but logged.
+GREP_OPEN_ARMS = frozenset({"cc-gorp-route"})
+
 # --------------------------------------------------------------------------
 # The one clause of upstream's prompt we rewrite, and why
 # --------------------------------------------------------------------------
@@ -257,6 +358,8 @@ ARM_CLAUSE = {
     "sub-sgb": "Use Glob, Read, and the `sg` command (via Bash) to explore the codebase.",
     # Keeps Grep, like the other cc-* clauses: cc-gorp is additive.
     "cc-gorp": "Use Glob, Grep, Read, and the `gorp` command (via Bash) to explore the codebase.",
+    # §37: names both shell commands, because both are open in this arm.
+    "cc-gorp-route": "Use Glob, Grep, Read, and the `gorp` and `grep` commands (via Bash) to explore the codebase.",
 }
 
 
@@ -432,6 +535,8 @@ def _git_head(repo: Path) -> dict:
 def _desc_version(arm: str) -> str | None:
     if arm == "cc-gorp":
         return "v12"
+    if arm == "cc-gorp-route":
+        return "v14"
     return SG_DESC if ARM_TOOL.get(arm) in ("sg", "gorp") else None
 
 
@@ -614,15 +719,24 @@ class ArmExplorer(ClaudeCodeExplorer):
                 flags = f"{flags} {extra}".strip()
             if flags:
                 env[f"LOCBENCH_{tool.upper()}_FLAGS"] = flags
-        if UNBLOCK_GREP:
+        grep_open = UNBLOCK_GREP or self.arm in GREP_OPEN_ARMS
+        if grep_open:
             for g in ("grep", "egrep", "fgrep"):
                 env[f"LOCBENCH_REAL_{g.upper()}"] = f"/usr/bin/{g}"
         # Steer rather than just refuse: shim.py writes these on both stdout
         # and stderr, because an agent piping into `head` sees silence
         # otherwise and reads it as "no matches" (run.py:514-531).
-        steer = (f"use the {tool} command instead" if tool
-                 else "use the Grep and Glob tools instead")
-        blocked_names = SEARCH_TOOLS if UNBLOCK_GREP else \
+        # §37: in a grep-open arm the steer names both tools. s36's cc-gorp
+        # steer said "use the gorp command instead" to 380 blocked shell-grep
+        # attempts — routing lexical intent into ranked search, the exact
+        # anti-routing the v13 clause exists to undo.
+        if tool and self.arm in GREP_OPEN_ARMS:
+            steer = f"use the {tool} command or grep instead"
+        elif tool:
+            steer = f"use the {tool} command instead"
+        else:
+            steer = "use the Grep and Glob tools instead"
+        blocked_names = SEARCH_TOOLS if grep_open else \
             ("grep", "egrep", "fgrep", *SEARCH_TOOLS)
         for t in blocked_names:
             env[f"LOCBENCH_BLOCKMSG_{t.upper()}"] = (
@@ -634,7 +748,17 @@ class ArmExplorer(ClaudeCodeExplorer):
 
     def _ensure_index(self) -> dict:
         """Build .gorp in the checkout. Only the sg arm gets one."""
-        if ARM_TOOL.get(self.arm) != "sg":
+        tool = ARM_TOOL.get(self.arm)
+        if tool == "gorp":
+            # Registered intent (§36): shipped default. The engine builds
+            # lazily into its global cache (~/.cache/gorp) on the first
+            # ranked search of a scope — s36 measured that at 216 ms median
+            # in-session — so there is nothing to pre-build here, and saying
+            # "arm has no sg" made a working treatment read like a miss.
+            return {"built": False,
+                    "reason": "gorp builds lazily into its global cache "
+                              "(shipped default)"}
+        if tool != "sg":
             return {"built": False, "reason": "arm has no sg"}
         idx = Path(self.repo_root) / ".gorp" / "meta.json"
         flags = shlex.split(SG_INDEX_FLAGS)
@@ -724,7 +848,7 @@ class ArmExplorer(ClaudeCodeExplorer):
             "desc_version": _desc_version(self.arm),
             "sg_search_flags": SG_SEARCH_FLAGS,
             "sg_index_flags": SG_INDEX_FLAGS,
-            "unblock_grep": UNBLOCK_GREP,
+            "unblock_grep": UNBLOCK_GREP or self.arm in GREP_OPEN_ARMS,
             "index": index, "ts": time.strftime("%Y-%m-%dT%H:%M:%S"),
         }, indent=1) + "\n")
 
